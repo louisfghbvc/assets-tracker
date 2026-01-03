@@ -1,13 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   TrendingUp,
-  TrendingDown,
   Wallet,
   PieChart,
   RefreshCw,
   Plus,
   ChevronRight,
-  TrendingUp as ProfitIcon,
   ArrowUpRight,
   GanttChartSquare
 } from "lucide-react";
@@ -23,7 +21,7 @@ interface Asset {
 }
 
 function App() {
-  const [totalBalance, setTotalBalance] = useState(128450.65);
+  const [totalBalance] = useState(128450.65);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const assets: Asset[] = [

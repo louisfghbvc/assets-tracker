@@ -239,14 +239,16 @@
   transform: translateX(-50%);
   width: calc(100% - 40px);
   max-width: 400px;
-  background: rgba(22, 22, 26, 0.8);
-  backdrop-filter: blur(20px);
+  background: rgba(22, 22, 26, 0.95);
+  /* More solid background */
+  backdrop-filter: blur(8px);
+  /* Reduced blur */
   border: 1px solid var(--glass-border);
   border-radius: 20px;
   display: flex;
   padding: 8px;
   gap: 4px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .tab-item {

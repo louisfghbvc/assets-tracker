@@ -1,12 +1,39 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
+      manifest: {
+        name: "AssetTracker",
+        short_name: "AssetTracker",
+        description: "Premium Financial Asset Tracker",
+        theme_color: "#0c0c0e",
+        background_color: "#0c0c0e",
+        display: "standalone",
+        icons: [
+          {
+            src: "icon.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "icon.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+        ],
+      },
+    }),
+  ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -19,10 +46,10 @@ export default defineConfig(async () => ({
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
+        protocol: "ws",
+        host,
+        port: 1421,
+      }
       : undefined,
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`

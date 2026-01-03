@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "android": "export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && export ANDROID_HOME=$HOME/Library/Android/sdk && export NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125 && tauri android dev",
+    "android": "export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && export ANDROID_HOME=$HOME/Library/Android/sdk && export ANDROID_SDK_ROOT=$ANDROID_HOME && export NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125 && tauri android dev",
     "ios": "tauri ios dev"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }

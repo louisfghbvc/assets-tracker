@@ -25,10 +25,10 @@
   --success: #10b981;
   --warning: #f59e0b;
   
-  /* Glassmorphism */
-  --glass-bg: rgba(22, 22, 26, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(12px);
+  /* Glassmorphism - Optimized for Mobile Performance */
+  --glass-bg: rgba(22, 22, 26, 0.85); /* Increased opacity to rely less on blur */
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(8px); /* Reduced blur radius */
 }
 
 * {
@@ -41,8 +41,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0c0c0e 100%);
+  background: #0c0c0e; /* Simplified background for performance */
   overflow-x: hidden;
+  /* Improve scrolling performance */
+  -webkit-overflow-scrolling: touch;
 }
 
 #root {
