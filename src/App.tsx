@@ -32,6 +32,7 @@ import AddAssetModal from "./components/AddAssetModal";
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
   const [syncStatus, setSyncStatus] = useState<string>("");
 
@@ -40,14 +41,16 @@ function App() {
   const assets = useLiveQuery(() => db.assets.toArray());
 
   const handleDeleteAsset = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this asset?")) {
-      try {
-        await db.assets.delete(id);
-        setSyncStatus("Asset deleted successfully");
-        setTimeout(() => setSyncStatus(""), 3000);
-      } catch (err) {
-        console.error("Failed to delete asset:", err);
-      }
+    console.log("handleDeleteAsset executing for ID:", id);
+    try {
+      await db.assets.delete(id);
+      console.log("Asset deleted from DB, ID:", id);
+      setSyncStatus("Asset deleted successfully");
+      setDeletingId(null);
+      setTimeout(() => setSyncStatus(""), 3000);
+    } catch (err) {
+      console.error("Failed to delete asset:", err);
+      setDeletingId(null);
     }
   };
   const login = useGoogleLogin({
@@ -265,18 +268,30 @@ function App() {
                     </div>
                   </div>
                   <div className="asset-actions">
-                    <div
-                      className="delete-item-btn"
-                      title="Delete Asset"
+                    <button
+                      className={`delete-item-btn ${deletingId === asset.id ? 'confirm-mode' : ''}`}
+                      title={deletingId === asset.id ? "Confirm Deletion" : "Delete Asset"}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (asset.id !== undefined) {
-                          handleDeleteAsset(asset.id);
+                        if (deletingId === asset.id) {
+                          console.log("Confirmation clicked for ID:", asset.id);
+                          if (asset.id !== undefined) handleDeleteAsset(asset.id);
+                        } else {
+                          console.log("First click for delete ID:", asset.id);
+                          setDeletingId(asset.id || null);
+                          // Auto-cancel after 3 seconds
+                          setTimeout(() => {
+                            setDeletingId(current => current === asset.id ? null : current);
+                          }, 3000);
                         }
                       }}
                     >
-                      <Trash2 size={22} color="white" />
-                    </div>
+                      {deletingId === asset.id ? (
+                        <span className="confirm-text">Confirm?</span>
+                      ) : (
+                        <Trash2 size={22} color="white" />
+                      )}
+                    </button>
                     <ChevronRight size={20} color="var(--text-muted)" />
                   </div>
                 </div>
