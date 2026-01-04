@@ -36,6 +36,7 @@ function App() {
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
   const [syncStatus, setSyncStatus] = useState<string>("");
   const [exchangeRate, setExchangeRate] = useState<number>(32.5);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
 
@@ -269,56 +270,75 @@ function App() {
 
             <div className="assets-list">
               {assets?.map((asset) => (
-                <div key={asset.id} className="asset-item">
-                  <div className="asset-icon">
-                    {asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
-                  </div>
-                  <div className="asset-info">
-                    <p className="asset-name">{asset.name}</p>
-                    <div className="asset-details">
-                      <span className="asset-symbol">{asset.symbol}</span>
-                      <span className="dot">•</span>
-                      <span className="asset-qty">{asset.quantity.toLocaleString()} units</span>
-                      <span className="dot">•</span>
-                      <span className="asset-avg-cost">Cost: ${asset.cost.toLocaleString()}</span>
+                <div
+                  key={asset.id}
+                  className={`asset-item ${expandedId === asset.id ? 'expanded' : ''}`}
+                  onClick={() => setExpandedId(expandedId === asset.id ? null : (asset.id || null))}
+                >
+                  <div className="asset-summary">
+                    <div className="asset-icon">
+                      {asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
                     </div>
-                  </div>
-                  <div className="asset-market">
-                    <p className="asset-price">${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}</p>
-                    <div className="asset-price-row">
-                      <span className="unit-price" title="Current Market Price">${(asset.currentPrice || 0).toLocaleString()}</span>
-                      <p className={`asset-change ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
-                        {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(2) : "0.00"}%
+                    <div className="asset-info">
+                      <p className="asset-name">{asset.name}</p>
+                      <p className="asset-symbol">{asset.symbol}</p>
+                    </div>
+                    <div className="asset-market">
+                      <p className="asset-price">
+                        ${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}
+                        <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
                       </p>
                     </div>
+                    <div className="asset-actions">
+                      <button
+                        className={`delete-item-btn ${deletingId === asset.id ? 'confirm-mode' : ''}`}
+                        title={deletingId === asset.id ? "Confirm Deletion" : "Delete Asset"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (deletingId === asset.id) {
+                            if (asset.id !== undefined) handleDeleteAsset(asset.id);
+                          } else {
+                            setDeletingId(asset.id || null);
+                            setTimeout(() => {
+                              setDeletingId(current => current === asset.id ? null : current);
+                            }, 3000);
+                          }
+                        }}
+                      >
+                        {deletingId === asset.id ? (
+                          <span className="confirm-text">Confirm?</span>
+                        ) : (
+                          <Trash2 size={22} color="white" />
+                        )}
+                      </button>
+                      <ChevronRight size={20} className={`expand-chevron ${expandedId === asset.id ? 'rotated' : ''}`} />
+                    </div>
                   </div>
-                  <div className="asset-actions">
-                    <button
-                      className={`delete-item-btn ${deletingId === asset.id ? 'confirm-mode' : ''}`}
-                      title={deletingId === asset.id ? "Confirm Deletion" : "Delete Asset"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (deletingId === asset.id) {
-                          console.log("Confirmation clicked for ID:", asset.id);
-                          if (asset.id !== undefined) handleDeleteAsset(asset.id);
-                        } else {
-                          console.log("First click for delete ID:", asset.id);
-                          setDeletingId(asset.id || null);
-                          // Auto-cancel after 3 seconds
-                          setTimeout(() => {
-                            setDeletingId(current => current === asset.id ? null : current);
-                          }, 3000);
-                        }
-                      }}
-                    >
-                      {deletingId === asset.id ? (
-                        <span className="confirm-text">Confirm?</span>
-                      ) : (
-                        <Trash2 size={22} color="white" />
-                      )}
-                    </button>
-                    <ChevronRight size={20} color="var(--text-muted)" />
-                  </div>
+
+                  {expandedId === asset.id && (
+                    <div className="asset-details-expanded animate-slide-down">
+                      <div className="detail-grid">
+                        <div className="detail-item">
+                          <span className="detail-label">Quantity</span>
+                          <span className="detail-value">{asset.quantity.toLocaleString()}</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Avg Cost</span>
+                          <span className="detail-value">${asset.cost.toLocaleString()}</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Unit Price</span>
+                          <span className="detail-value">${(asset.currentPrice || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Profit/Loss</span>
+                          <span className={`detail-value ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
+                            {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(2) : "0.00"}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {assets?.length === 0 && (
