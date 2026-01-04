@@ -10,7 +10,8 @@ import {
   GanttChartSquare,
   LogIn,
   LogOut,
-  CloudSync
+  CloudSync,
+  Trash2
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -38,6 +39,17 @@ function App() {
 
   const assets = useLiveQuery(() => db.assets.toArray());
 
+  const handleDeleteAsset = async (id: number) => {
+    if (window.confirm("Are you sure you want to delete this asset?")) {
+      try {
+        await db.assets.delete(id);
+        setSyncStatus("Asset deleted successfully");
+        setTimeout(() => setSyncStatus(""), 3000);
+      } catch (err) {
+        console.error("Failed to delete asset:", err);
+      }
+    }
+  };
   const login = useGoogleLogin({
     onSuccess: (tokenResponse) => {
       setAccessToken(tokenResponse.access_token);
@@ -81,10 +93,13 @@ function App() {
       if (symbols.length > 0) {
         // Call Tauri command
         const { invoke } = await import("@tauri-apps/api/core");
+        console.log("Invoking fetch_prices with symbols:", symbols);
         const prices: { symbol: string, price: number }[] = await invoke("fetch_prices", { symbols });
+        console.log("Received prices from Tauri:", prices);
 
         // Update DB
         for (const priceInfo of prices) {
+          console.log(`Updating ${priceInfo.symbol} to price: ${priceInfo.price}`);
           const asset = allAssets.find(a => a.symbol === priceInfo.symbol);
           if (asset && asset.id) {
             await db.assets.update(asset.id, {
@@ -117,7 +132,7 @@ function App() {
     { name: 'Crypto', value: assets.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) },
   ].filter(d => d.value > 0) : [];
 
-  const COLORS = ['#fbbf24', '#f59e0b', '#d97706'];
+  const COLORS = ["#3b82f6", "#6366f1", "#10b981", "#8b5cf6"];
 
   return (
     <div className="app-container">
@@ -215,15 +230,36 @@ function App() {
                   </div>
                   <div className="asset-info">
                     <p className="asset-name">{asset.name}</p>
-                    <p className="asset-symbol">{asset.symbol}</p>
+                    <div className="asset-details">
+                      <span className="asset-symbol">{asset.symbol}</span>
+                      <span className="dot">•</span>
+                      <span className="asset-qty">{asset.quantity.toLocaleString()} units</span>
+                    </div>
                   </div>
                   <div className="asset-market">
                     <p className="asset-price">${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}</p>
-                    <p className={`asset-change ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
-                      {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(1) : "0.0"}%
-                    </p>
+                    <div className="asset-price-row">
+                      <span className="unit-price">${(asset.currentPrice || 0).toLocaleString()}</span>
+                      <p className={`asset-change ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
+                        {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(1) : "0.0"}%
+                      </p>
+                    </div>
                   </div>
-                  <ChevronRight size={20} color="var(--text-muted)" />
+                  <div className="asset-actions">
+                    <div
+                      className="delete-item-btn"
+                      title="Delete Asset"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (asset.id !== undefined) {
+                          handleDeleteAsset(asset.id);
+                        }
+                      }}
+                    >
+                      <Trash2 size={22} color="white" />
+                    </div>
+                    <ChevronRight size={20} color="var(--text-muted)" />
+                  </div>
                 </div>
               ))}
               {assets?.length === 0 && (
@@ -260,7 +296,7 @@ function App() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        background: 'rgba(28, 25, 23, 0.9)',
+                        background: 'rgba(18, 18, 23, 0.9)',
                         border: '1px solid var(--glass-border)',
                         borderRadius: '12px',
                         color: '#fff'
@@ -287,8 +323,14 @@ function App() {
       )}
 
       {/* Modal */}
-      <AddAssetModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-
+      <AddAssetModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAssetAdded={() => {
+          console.log("Asset added, triggering immediate refresh...");
+          handleRefresh();
+        }}
+      />
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">
         <div className={`tab-item ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>

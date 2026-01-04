@@ -12,31 +12,29 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Enhanced High-Contrast Warm Palette */
-  --primary: #fbbf24;
-  /* Amber 400 - Brighter for contrast */
-  --primary-glow: rgba(251, 191, 36, 0.4);
-  --secondary: #f59e0b;
-  /* Amber 500 */
-  --accent: #ff4d6d;
-  --background: #0c0b0a;
-  /* Darker warm charcoal */
-  --surface: #1c1917;
-  /* Stone 900 */
-  --surface-hover: #292524;
-  /* Stone 800 */
+  /* Professional Sapphire & Indigo Palette */
+  --primary: #3b82f6;
+  /* blue 500 */
+  --primary-glow: rgba(59, 130, 246, 0.4);
+  --secondary: #6366f1;
+  /* indigo 500 */
+  --accent: #f43f5e;
+  --background: #08070b;
+  /* Even deeper navy/black */
+  --surface: #121217;
+  /* Deep obsidian */
+  --surface-hover: #1e1e26;
   --text-main: #ffffff;
-  /* Pure white for maximum clarity */
-  --text-muted: #d6d3d1;
-  /* Stone 300 - Much brighter than before */
-  --success: #34d399;
-  /* Brighter green */
-  --warning: #fbbf24;
+  --text-muted: #94a3b8;
+  /* slate 400 */
+  --success: #10b981;
+  /* emerald 500 */
+  --warning: #f59e0b;
 
-  /* Warm Glassmorphism */
-  --glass-bg: rgba(28, 25, 23, 0.85);
+  /* Sapphire Glassmorphism */
+  --glass-bg: rgba(18, 18, 23, 0.8);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(12px);
+  --glass-blur: blur(20px);
 }
 
 * {

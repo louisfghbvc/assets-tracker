@@ -13,23 +13,31 @@ export const syncService = {
             // 2. Fetch local data
             const localAssets = await db.assets.toArray();
 
-            // 3. Merging Logic
-            // For simplicity in this version:
-            // Local -> Remote: Push all local to remote
-            // Remote -> Local: Pull all remote to local
+            // 3. Merging Logic: Use symbol as the unique key
+            // Push local to remote (current simple version: remote replaces local if conflicts, or vice-versa)
             await googleSheetsService.updatePortfolio(accessToken, spreadsheetId, localAssets);
 
             if (remoteRows.length > 0) {
-                const assetsFromRemote = remoteRows.map((row: any) => ({
-                    symbol: row[0],
-                    name: row[1],
-                    type: row[2],
-                    market: row[3],
-                    quantity: parseFloat(row[4]),
-                    cost: parseFloat(row[5]),
-                    lastUpdated: parseInt(row[6]) || Date.now(),
-                }));
-                await db.assets.bulkPut(assetsFromRemote);
+                for (const row of remoteRows) {
+                    const remoteAsset = {
+                        symbol: row[0],
+                        name: row[1],
+                        type: row[2],
+                        market: row[3],
+                        quantity: parseFloat(row[4]) || 0,
+                        cost: parseFloat(row[5]) || 0,
+                        lastUpdated: parseInt(row[6]) || Date.now(),
+                    };
+
+                    const existing = localAssets.find(a => a.symbol === remoteAsset.symbol);
+                    if (existing && existing.id) {
+                        // Update local if remote is newer (optional, for now we just put)
+                        await db.assets.update(existing.id, remoteAsset);
+                    } else {
+                        // Add new
+                        await db.assets.add(remoteAsset);
+                    }
+                }
             }
 
             // 4. Update sync log

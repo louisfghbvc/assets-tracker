@@ -5,9 +5,10 @@ import { db } from '../db/database';
 interface AddAssetModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onAssetAdded?: () => void;
 }
 
-const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose }) => {
+const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetAdded }) => {
     const [symbol, setSymbol] = useState('');
     const [name, setName] = useState('');
     const [market, setMarket] = useState<'TW' | 'US' | 'Crypto'>('TW');
@@ -29,11 +30,14 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose }) => {
             name,
             type: market === 'Crypto' ? 'crypto' : 'stock',
             market,
-            quantity: parseFloat(quantity),
-            cost: parseFloat(cost),
-            currentPrice: parseFloat(cost), // Initialize with cost
+            quantity: parseFloat(quantity) || 0,
+            cost: parseFloat(cost) || 0,
+            currentPrice: parseFloat(cost) || 0, // Initialize with cost
             lastUpdated: Date.now(),
         });
+
+        // Trigger refresh in parent
+        if (onAssetAdded) onAssetAdded();
 
         // Reset and close
         setSymbol('');

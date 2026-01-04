@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct PriceInfo {
-    symbol: String,
-    price: f64,
+    pub symbol: String,
+    pub price: f64,
 }
 
 #[tauri::command]
@@ -36,11 +36,15 @@ async fn fetch_prices(symbols: Vec<String>) -> Result<Vec<PriceInfo>, String> {
         match client.get(&url).send().await {
             Ok(resp) => {
                 if let Ok(json) = resp.json::<serde_json::Value>().await {
+                    println!("Fetched JSON for {}: {:?}", symbol, json);
                     if let Some(price) =
                         json["chart"]["result"][0]["meta"]["regularMarketPrice"].as_f64()
                     {
+                        println!("Parsed price for {}: {}", symbol, price);
                         results.push(PriceInfo { symbol, price });
                         continue;
+                    } else {
+                        println!("Failed to find regularMarketPrice for {}", symbol);
                     }
                 }
             }
