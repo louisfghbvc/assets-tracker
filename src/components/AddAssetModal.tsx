@@ -27,7 +27,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
 
         await db.assets.add({
             symbol: finalSymbol,
-            name,
+            name: name.trim() || finalSymbol,
             type: market === 'Crypto' ? 'crypto' : 'stock',
             market,
             quantity: parseFloat(quantity) || 0,
@@ -93,8 +93,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Asset name..."
-                            required
+                            placeholder="Optional (Auto-fetch)..."
                         />
                     </div>
 
