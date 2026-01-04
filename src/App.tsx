@@ -20,18 +20,64 @@ interface Asset {
   type: 'TW' | 'US' | 'Crypto';
 }
 
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "./db/database";
+import { useGoogleLogin } from "@react-oauth/google";
+import { syncService } from "./services/sync";
+
 function App() {
-  const [totalBalance] = useState(128450.65);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
+  const [syncStatus, setSyncStatus] = useState<string>("");
 
-  const assets: Asset[] = [
-    { id: '1', name: '台積電', symbol: '2330.TW', value: 45200, change: 2.4, type: 'TW' },
-    { id: '2', name: 'Apple Inc.', symbol: 'AAPL', value: 32150, change: -1.2, type: 'US' },
-    { id: '3', name: 'Bitcoin', symbol: 'BTC', value: 51100.65, change: 5.7, type: 'Crypto' },
-  ];
+  const assets = useLiveQuery(() => db.assets.toArray());
 
-  const handleRefresh = () => {
+  const login = useGoogleLogin({
+    onSuccess: (tokenResponse) => {
+      setAccessToken(tokenResponse.access_token);
+      localStorage.setItem("google_access_token", tokenResponse.access_token);
+    },
+    scope: "https://www.googleapis.com/auth/spreadsheets",
+  });
+
+  const handleSync = async () => {
+    if (!accessToken) {
+      login();
+      return;
+    }
+    setSyncStatus("Syncing...");
+    const result = await syncService.sync(accessToken);
+    if (result.success) {
+      setSyncStatus(`Success! Synced ${result.count} assets`);
+    } else {
+      setSyncStatus(`Sync Failed: ${result.error}`);
+    }
+    setTimeout(() => setSyncStatus(""), 3000);
+  };
+
+  const handleLogout = () => {
+    setAccessToken(null);
+    localStorage.removeItem("google_access_token");
+  };
+
+  const totalBalance = assets?.reduce((sum, asset) => sum + (asset.currentPrice || 0) * asset.quantity, 0) || 0;
+  const yesterdayBalance = totalBalance * 0.98; // Mock comparison
+  const balanceChange = totalBalance - yesterdayBalance;
+  const balanceChangePercent = ((balanceChange / yesterdayBalance) * 100).toFixed(1);
+
+  const handleRefresh = async () => {
     setIsRefreshing(true);
+
+    // Seed data if empty (for demonstration)
+    const count = await db.assets.count();
+    if (count === 0) {
+      await db.assets.bulkAdd([
+        { name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
+        { name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
+        { name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
+      ]);
+    }
+
     setTimeout(() => setIsRefreshing(false), 1500);
   };
 
@@ -46,9 +92,24 @@ function App() {
             </div>
             <span>AssetTracker</span>
           </div>
-          <button className="refresh-btn" onClick={handleRefresh}>
-            <RefreshCw size={18} className={isRefreshing ? "spin" : ""} />
-          </button>
+          <div className="header-actions">
+            {syncStatus && <span className="sync-status-msg">{syncStatus}</span>}
+            <button className="action-btn sync-btn" onClick={handleSync} title="Sync to Sheets">
+              <CloudSync size={18} />
+            </button>
+            <button className="action-btn" onClick={handleRefresh} title="Fresh Data">
+              <RefreshCw size={18} className={isRefreshing ? "spin" : ""} />
+            </button>
+            {accessToken ? (
+              <button className="action-btn" onClick={handleLogout} title="Logout">
+                <LogOut size={18} />
+              </button>
+            ) : (
+              <button className="action-btn" onClick={() => login()} title="Login with Google">
+                <LogIn size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="balance-section">
@@ -56,8 +117,12 @@ function App() {
           <h1 className="balance-amount">
             ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </h1>
+          <div className="balance-section">
+          </div>
           <div className="balance-stat">
-            <span className="stat-value positive">+$2,450.20 (1.9%)</span>
+            <span className={`stat-value ${Number(balanceChange) >= 0 ? 'positive' : 'negative'}`}>
+              {Number(balanceChange) >= 0 ? '+' : ''}${Math.abs(Number(balanceChange)).toLocaleString()} ({balanceChangePercent}%)
+            </span>
             <span className="stat-label">than yesterday</span>
           </div>
         </div>
@@ -69,21 +134,27 @@ function App() {
           <div className="stat-icon tw"><ArrowUpRight size={16} /></div>
           <div>
             <p className="stat-card-label">TW Stocks</p>
-            <p className="stat-card-value">$45.2k</p>
+            <p className="stat-card-value">
+              ${(assets?.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0 / 1000).toFixed(1)}k
+            </p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon us"><ArrowUpRight size={16} /></div>
           <div>
             <p className="stat-card-label">US Stocks</p>
-            <p className="stat-card-value">$32.1k</p>
+            <p className="stat-card-value">
+              ${(assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0 / 1000).toFixed(1)}k
+            </p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon crypto"><ArrowUpRight size={16} /></div>
           <div>
             <p className="stat-card-label">Crypto</p>
-            <p className="stat-card-value">$51.1k</p>
+            <p className="stat-card-value">
+              ${(assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0 / 1000).toFixed(1)}k
+            </p>
           </div>
         </div>
       </section>
@@ -96,19 +167,19 @@ function App() {
         </div>
 
         <div className="assets-list">
-          {assets.map((asset) => (
+          {assets?.map((asset) => (
             <div key={asset.id} className="asset-item">
               <div className="asset-icon">
-                {asset.type === 'TW' ? <TrendingUp size={20} /> : asset.type === 'US' ? <TrendingUp size={20} /> : <Wallet size={20} />}
+                {asset.market === 'TW' ? <TrendingUp size={20} /> : asset.market === 'US' ? <TrendingUp size={20} /> : <Wallet size={20} />}
               </div>
               <div className="asset-info">
                 <p className="asset-name">{asset.name}</p>
                 <p className="asset-symbol">{asset.symbol}</p>
               </div>
               <div className="asset-market">
-                <p className="asset-price">${asset.value.toLocaleString()}</p>
-                <p className={`asset-change ${asset.change > 0 ? 'positive' : 'negative'}`}>
-                  {asset.change > 0 ? '+' : ''}{asset.change}%
+                <p className="asset-price">${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}</p>
+                <p className={`asset-change ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
+                  {(((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(1)}%
                 </p>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
