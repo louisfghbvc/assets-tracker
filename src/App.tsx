@@ -12,6 +12,14 @@ import {
   LogOut,
   CloudSync
 } from "lucide-react";
+import {
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend
+} from 'recharts';
 import "./App.css";
 
 import { useLiveQuery } from "dexie-react-hooks";
@@ -25,6 +33,8 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
   const [syncStatus, setSyncStatus] = useState<string>("");
+
+  const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
 
   const assets = useLiveQuery(() => db.assets.toArray());
 
@@ -59,7 +69,7 @@ function App() {
   const totalBalance = assets?.reduce((sum, asset) => sum + (asset.currentPrice || 0) * asset.quantity, 0) || 0;
   const yesterdayBalance = totalBalance * 0.98; // Mock comparison
   const balanceChange = totalBalance - yesterdayBalance;
-  const balanceChangePercent = ((balanceChange / yesterdayBalance) * 100).toFixed(1);
+  const balanceChangePercent = yesterdayBalance !== 0 ? ((balanceChange / yesterdayBalance) * 100).toFixed(1) : "0.0";
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -99,6 +109,15 @@ function App() {
 
     setTimeout(() => setIsRefreshing(false), 1500);
   };
+
+  // Chart data calculation
+  const marketData = assets ? [
+    { name: 'TW Stocks', value: assets.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) },
+    { name: 'US Stocks', value: assets.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) },
+    { name: 'Crypto', value: assets.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) },
+  ].filter(d => d.value > 0) : [];
+
+  const COLORS = ['#fbbf24', '#f59e0b', '#d97706'];
 
   return (
     <div className="app-container">
@@ -145,76 +164,141 @@ function App() {
         </div>
       </header>
 
-      {/* Quick Stats */}
-      <section className="stats-grid animate-fade-in" style={{ animationDelay: '0.1s' }}>
-        <div className="stat-card">
-          <div className="stat-icon tw"><ArrowUpRight size={20} /></div>
-          <div>
-            <p className="stat-card-label">TW Stocks</p>
-            <p className="stat-card-value">
-              ${((assets?.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
-            </p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon us"><ArrowUpRight size={20} /></div>
-          <div>
-            <p className="stat-card-label">US Stocks</p>
-            <p className="stat-card-value">
-              ${((assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
-            </p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon crypto"><ArrowUpRight size={20} /></div>
-          <div>
-            <p className="stat-card-label">Crypto</p>
-            <p className="stat-card-value">
-              ${((assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Assets List */}
-      <section className="assets-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
-        <div className="section-header">
-          <h2>Your Assets</h2>
-          <button className="add-btn" onClick={() => setIsModalOpen(true)}>
-            <Plus size={24} />
-          </button>
-        </div>
-
-        <div className="assets-list">
-          {assets?.map((asset) => (
-            <div key={asset.id} className="asset-item">
-              <div className="asset-icon">
-                {asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
-              </div>
-              <div className="asset-info">
-                <p className="asset-name">{asset.name}</p>
-                <p className="asset-symbol">{asset.symbol}</p>
-              </div>
-              <div className="asset-market">
-                <p className="asset-price">${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}</p>
-                <p className={`asset-change ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
-                  {(((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(1)}%
+      {/* Conditional Rendering based on Tab */}
+      {activeTab === 'assets' && (
+        <>
+          {/* Quick Stats */}
+          <section className="stats-grid animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <div className="stat-card">
+              <div className="stat-icon tw"><ArrowUpRight size={20} /></div>
+              <div>
+                <p className="stat-card-label">TW Stocks</p>
+                <p className="stat-card-value">
+                  ${((assets?.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
                 </p>
               </div>
-              <ChevronRight size={20} color="var(--text-muted)" />
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="stat-card">
+              <div className="stat-icon us"><ArrowUpRight size={20} /></div>
+              <div>
+                <p className="stat-card-label">US Stocks</p>
+                <p className="stat-card-value">
+                  ${((assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
+                </p>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon crypto"><ArrowUpRight size={20} /></div>
+              <div>
+                <p className="stat-card-label">Crypto</p>
+                <p className="stat-card-value">
+                  ${((assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Assets List */}
+          <section className="assets-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <div className="section-header">
+              <h2>Your Assets</h2>
+              <button className="add-btn" onClick={() => setIsModalOpen(true)}>
+                <Plus size={24} />
+              </button>
+            </div>
+
+            <div className="assets-list">
+              {assets?.map((asset) => (
+                <div key={asset.id} className="asset-item">
+                  <div className="asset-icon">
+                    {asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
+                  </div>
+                  <div className="asset-info">
+                    <p className="asset-name">{asset.name}</p>
+                    <p className="asset-symbol">{asset.symbol}</p>
+                  </div>
+                  <div className="asset-market">
+                    <p className="asset-price">${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}</p>
+                    <p className={`asset-change ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
+                      {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(1) : "0.0"}%
+                    </p>
+                  </div>
+                  <ChevronRight size={20} color="var(--text-muted)" />
+                </div>
+              ))}
+              {assets?.length === 0 && (
+                <div className="empty-state" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  <p>No assets found. Click the + button to add one.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </>
+      )}
+
+      {activeTab === 'stats' && (
+        <section className="stats-view animate-fade-in">
+          <div className="card chart-container">
+            <h2 className="view-title">Portfolio Allocation</h2>
+            {marketData.length > 0 ? (
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height={300}>
+                  <RePieChart>
+                    <Pie
+                      data={marketData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={80}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {marketData.map((_entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        background: 'rgba(28, 25, 23, 0.9)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '12px',
+                        color: '#fff'
+                      }}
+                      itemStyle={{ color: '#fff' }}
+                      formatter={(value: number) => `$${value.toLocaleString()}`}
+                    />
+                    <Legend verticalAlign="bottom" height={36} />
+                  </RePieChart>
+                </ResponsiveContainer>
+                <div className="chart-center-label">
+                  <p className="label">Total</p>
+                  <p className="amount">${(totalBalance / 1000).toFixed(1)}k</p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <PieChart size={64} color="var(--primary)" style={{ marginBottom: '20px', opacity: 0.5 }} />
+                <p style={{ color: 'var(--text-muted)' }}>No data to display. Add some assets first!</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Modal */}
       <AddAssetModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">
-        <div className="tab-item active"><TrendingUp size={24} /><span>Assets</span></div>
-        <div className="tab-item"><PieChart size={24} /><span>Stats</span></div>
-        <div className="tab-item"><Wallet size={24} /><span>Wallets</span></div>
+        <div className={`tab-item ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>
+          <TrendingUp size={24} />
+          <span>Assets</span>
+        </div>
+        <div className={`tab-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
+          <PieChart size={24} />
+          <span>Stats</span>
+        </div>
       </nav>
     </div>
   );

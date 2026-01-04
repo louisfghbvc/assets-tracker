@@ -504,3 +504,72 @@ body {
     padding: 12px;
   }
 }
+
+/* Stats View & Chart */
+.view-title {
+  margin-bottom: 24px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.chart-container {
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chart-center-label {
+  position: absolute;
+  top: 40%;
+  /* Matches Recharts CX/CY balanced with Legend */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.chart-center-label .label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+  letter-spacing: 0.1em;
+}
+
+.chart-center-label .amount {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Recharts Customizations */
+.recharts-legend-item-text {
+  color: #fff !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+  margin-left: 8px;
+}
+
+.recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.05) !important;
+}
+
+.recharts-default-legend {
+  margin-top: 20px !important;
+}
