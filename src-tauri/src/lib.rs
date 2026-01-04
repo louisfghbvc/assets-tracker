@@ -7,6 +7,31 @@ pub struct PriceInfo {
 }
 
 #[tauri::command]
+async fn fetch_exchange_rate() -> Result<f64, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = "https://query2.finance.yahoo.com/v8/finance/chart/USDTWD=X?interval=1m&range=1d";
+
+    match client.get(url).send().await {
+        Ok(resp) => {
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                if let Some(price) =
+                    json["chart"]["result"][0]["meta"]["regularMarketPrice"].as_f64()
+                {
+                    println!("Exchange Rate: Parsed USD/TWD: {}", price);
+                    return Ok(price);
+                }
+            }
+            Err("Could not parse exchange rate data".to_string())
+        }
+        Err(e) => Err(format!("Error fetching exchange rate: {}", e)),
+    }
+}
+
+#[tauri::command]
 async fn fetch_prices(symbols: Vec<String>) -> Result<Vec<PriceInfo>, String> {
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -130,7 +155,7 @@ async fn fetch_prices(symbols: Vec<String>) -> Result<Vec<PriceInfo>, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![fetch_prices])
+        .invoke_handler(tauri::generate_handler![fetch_prices, fetch_exchange_rate])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -143,6 +143,18 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+.exchange-rate-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+  margin-right: 8px;
+}
+
 .sync-status-msg {
   font-size: 0.75rem;
   color: var(--primary);
@@ -150,7 +162,6 @@ body {
   padding: 6px 14px;
   border-radius: 20px;
   font-weight: 600;
-  animation: slideDown 0.3s ease-out;
 }
 
 /* Balance Section */

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   Wallet,
@@ -35,10 +35,27 @@ function App() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
   const [syncStatus, setSyncStatus] = useState<string>("");
+  const [exchangeRate, setExchangeRate] = useState<number>(32.5);
 
   const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
 
   const assets = useLiveQuery(() => db.assets.toArray());
+
+  const fetchExchangeRate = async () => {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const rate: number = await invoke("fetch_exchange_rate");
+      setExchangeRate(rate);
+      return rate;
+    } catch (e) {
+      console.error("Failed to fetch exchange rate:", e);
+      return 32.5;
+    }
+  };
+
+  useEffect(() => {
+    fetchExchangeRate();
+  }, []);
 
   const handleDeleteAsset = async (id: number) => {
     console.log("handleDeleteAsset executing for ID:", id);
@@ -81,8 +98,16 @@ function App() {
     localStorage.removeItem("google_access_token");
   };
 
-  const totalBalance = assets?.reduce((sum, asset) => sum + (asset.currentPrice || 0) * asset.quantity, 0) || 0;
-  const yesterdayBalance = totalBalance * 0.98; // Mock comparison
+  const totalBalance = assets?.reduce((sum, asset) => {
+    const value = (asset.currentPrice || 0) * asset.quantity;
+    return sum + (asset.market === 'TW' ? value : value * exchangeRate);
+  }, 0) || 0;
+
+  const yesterdayBalance = assets?.reduce((sum, asset) => {
+    const value = asset.cost * asset.quantity;
+    return sum + (asset.market === 'TW' ? value : value * exchangeRate);
+  }, 0) || 0;
+
   const balanceChange = totalBalance - yesterdayBalance;
   const balanceChangePercent = yesterdayBalance !== 0 ? ((balanceChange / yesterdayBalance) * 100).toFixed(1) : "0.0";
 
@@ -91,15 +116,13 @@ function App() {
     setSyncStatus("Refreshing prices...");
 
     try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await fetchExchangeRate();
+
       const allAssets = await db.assets.toArray();
       const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
 
       if (uniqueSymbols.length > 0) {
-        // Dynamic import moved inside for better scope management if needed, 
-        // but typically should be at top level. For Tauri compatibility, 
-        // we'll keep it here but ensure it's handled.
-        const { invoke } = await import("@tauri-apps/api/core");
-
         console.log("Refreshing prices for symbols:", uniqueSymbols);
         const prices: { symbol: string, price: number }[] = await invoke("fetch_prices", { symbols: uniqueSymbols });
         console.log("Received prices:", prices);
@@ -107,7 +130,6 @@ function App() {
         if (prices.length === 0) {
           setSyncStatus("No prices returned from API");
         } else {
-          // Update DB
           let updatedCount = 0;
           const priceMap = new Map(prices.map(p => [p.symbol, p.price]));
 
@@ -166,6 +188,9 @@ function App() {
             <span>AssetTracker</span>
           </div>
           <div className="header-actions">
+            {exchangeRate > 1 && (
+              <span className="exchange-rate-badge">USD/TWD: {exchangeRate.toFixed(2)}</span>
+            )}
             {syncStatus && <span className="sync-status-msg">{syncStatus}</span>}
             <button className="action-btn sync-btn" onClick={handleSync} data-hint="同步至雲端">
               <CloudSync size={24} />
@@ -186,9 +211,9 @@ function App() {
         </div>
 
         <div className="balance-section">
-          <p className="balance-label">Total Balance</p>
+          <p className="balance-label">Total Balance (NTD)</p>
           <h1 className="balance-amount">
-            ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h1>
           <div className="balance-stat">
             <span className={`stat-value ${Number(balanceChange) >= 0 ? 'positive' : 'negative'}`}>
@@ -218,7 +243,7 @@ function App() {
               <div>
                 <p className="stat-card-label">US Stocks</p>
                 <p className="stat-card-value">
-                  ${((assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
+                  ${((assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) * exchangeRate / 1000).toFixed(1)}k
                 </p>
               </div>
             </div>
@@ -227,7 +252,7 @@ function App() {
               <div>
                 <p className="stat-card-label">Crypto</p>
                 <p className="stat-card-value">
-                  ${((assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
+                  ${((assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) * exchangeRate / 1000).toFixed(1)}k
                 </p>
               </div>
             </div>
