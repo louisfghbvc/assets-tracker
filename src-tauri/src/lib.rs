@@ -10,70 +10,117 @@ pub struct PriceInfo {
 async fn fetch_prices(symbols: Vec<String>) -> Result<Vec<PriceInfo>, String> {
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .default_headers({
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert("Accept", "application/json, text/plain, */*".parse().unwrap());
+            headers.insert("Accept-Language", "en-US,en;q=0.9".parse().unwrap());
+            headers.insert("Origin", "https://finance.yahoo.com".parse().unwrap());
+            headers.insert("Referer", "https://finance.yahoo.com/".parse().unwrap());
+            headers
+        })
         .build()
         .map_err(|e| e.to_string())?;
 
     let mut results = Vec::new();
 
     for symbol in symbols {
-        // Yahoo Finance symbol mapping
-        let yahoo_symbol = if !symbol.contains('.')
-            && symbol.len() <= 5
-            && symbol.chars().all(|c| c.is_ascii_uppercase())
-        {
-            // Likely US Stock or Crypto. Yahoo needs BTC-USD for Crypto usually.
-            // We'll try common suffixes or mapping in a real app.
-            symbol.clone()
-        } else {
-            symbol.clone()
+        // Add a small delay to avoid rate limiting
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+        // Taiwan Stock Handling (e.g., 2330.TW)
+        if symbol.ends_with(".TW") {
+            let code = symbol.replace(".TW", "");
+            // Try tse (Listed) first, then otc (OTC)
+            let urls = vec![
+                format!(
+                    "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{}.tw&json=1",
+                    code
+                ),
+                format!(
+                    "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_{}.tw&json=1",
+                    code
+                ),
+            ];
+
+            let mut fetched = false;
+            for url in urls {
+                match client.get(&url).send().await {
+                    Ok(resp) => {
+                        if let Ok(json) = resp.json::<serde_json::Value>().await {
+                            if let Some(msg) = json["msgArray"].as_array().and_then(|a| a.first()) {
+                                // 'z' is current price, 'y' is yesterday's close
+                                let price_str = msg["z"]
+                                    .as_str()
+                                    .unwrap_or(msg["y"].as_str().unwrap_or("0"));
+                                if let Ok(price) = price_str.parse::<f64>() {
+                                    if price > 0.0 {
+                                        println!("TWSE: Parsed price for {}: {}", symbol, price);
+                                        results.push(PriceInfo {
+                                            symbol: symbol.clone(),
+                                            price,
+                                        });
+                                        fetched = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => println!("Error fetching TWSE {}: {}", symbol, e),
+                }
+            }
+            if fetched {
+                continue;
+            }
+        }
+
+        // Global Stocks / Crypto Handling (Yahoo Finance)
+        // Fix for common crypto symbols
+        let yahoo_symbol = match symbol.as_str() {
+            "BTC" => "BTC-USD".to_string(),
+            "ETH" => "ETH-USD".to_string(),
+            "SOL" => "SOL-USD".to_string(),
+            s if !s.contains('.') && s.len() <= 5 && s == s.to_uppercase() => {
+                // Likely a US stock or crypto, keep as is or append -USD if common crypto
+                s.to_string()
+            }
+            s => s.to_string(),
         };
 
         let url = format!(
-            "https://query1.finance.yahoo.com/v8/finance/chart/{}?interval=1m&range=1d",
+            "https://query2.finance.yahoo.com/v8/finance/chart/{}?interval=1m&range=1d",
             yahoo_symbol
         );
 
         match client.get(&url).send().await {
             Ok(resp) => {
-                if let Ok(json) = resp.json::<serde_json::Value>().await {
-                    println!("Fetched JSON for {}: {:?}", symbol, json);
-                    if let Some(price) =
-                        json["chart"]["result"][0]["meta"]["regularMarketPrice"].as_f64()
-                    {
-                        println!("Parsed price for {}: {}", symbol, price);
-                        results.push(PriceInfo { symbol, price });
-                        continue;
-                    } else {
-                        println!("Failed to find regularMarketPrice for {}", symbol);
+                let status = resp.status();
+                if status.is_success() {
+                    if let Ok(json) = resp.json::<serde_json::Value>().await {
+                        if let Some(price) =
+                            json["chart"]["result"][0]["meta"]["regularMarketPrice"].as_f64()
+                        {
+                            println!(
+                                "Yahoo: Parsed price for {} ({}): {}",
+                                symbol, yahoo_symbol, price
+                            );
+                            results.push(PriceInfo {
+                                symbol: symbol.clone(),
+                                price,
+                            });
+                        } else {
+                            println!("Yahoo: No price data for {} ({})", symbol, yahoo_symbol);
+                        }
                     }
+                } else {
+                    println!(
+                        "Yahoo: Error fetching {} ({}): {}",
+                        symbol, yahoo_symbol, status
+                    );
                 }
             }
-            Err(e) => {
-                println!("Error fetching {}: {}", symbol, e);
-            }
+            Err(e) => println!("Error fetching {}: {}", symbol, e),
         }
-
-        // Fallback for Crypto if not found (e.g. BTC -> BTC-USD)
-        if !symbol.contains('.') {
-            let alt_symbol = format!("{}-USD", symbol);
-            let alt_url = format!(
-                "https://query1.finance.yahoo.com/v8/finance/chart/{}?interval=1m&range=1d",
-                alt_symbol
-            );
-            if let Ok(resp) = client.get(&alt_url).send().await {
-                if let Ok(json) = resp.json::<serde_json::Value>().await {
-                    if let Some(price) =
-                        json["chart"]["result"][0]["meta"]["regularMarketPrice"].as_f64()
-                    {
-                        results.push(PriceInfo { symbol, price });
-                        continue;
-                    }
-                }
-            }
-        }
-
-        // Final fallback if all fails (stay at existing price) or return a default
-        // results.push(PriceInfo { symbol, price: 0.0 });
     }
 
     Ok(results)

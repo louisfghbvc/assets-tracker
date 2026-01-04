@@ -374,6 +374,11 @@ body {
   font-weight: 500;
 }
 
+.asset-avg-cost {
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+}
+
 .dot {
   opacity: 0.3;
 }

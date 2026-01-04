@@ -85,33 +85,49 @@ function App() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setSyncStatus("Refreshing prices...");
 
     try {
       const allAssets = await db.assets.toArray();
-      const symbols = allAssets.map(a => a.symbol);
+      const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
 
-      if (symbols.length > 0) {
-        // Call Tauri command
+      if (uniqueSymbols.length > 0) {
+        // Dynamic import moved inside for better scope management if needed, 
+        // but typically should be at top level. For Tauri compatibility, 
+        // we'll keep it here but ensure it's handled.
         const { invoke } = await import("@tauri-apps/api/core");
-        console.log("Invoking fetch_prices with symbols:", symbols);
-        const prices: { symbol: string, price: number }[] = await invoke("fetch_prices", { symbols });
-        console.log("Received prices from Tauri:", prices);
 
-        // Update DB
-        for (const priceInfo of prices) {
-          console.log(`Updating ${priceInfo.symbol} to price: ${priceInfo.price}`);
-          const asset = allAssets.find(a => a.symbol === priceInfo.symbol);
-          if (asset && asset.id) {
-            await db.assets.update(asset.id, {
-              currentPrice: priceInfo.price,
-              lastUpdated: Date.now()
-            });
+        console.log("Refreshing prices for symbols:", uniqueSymbols);
+        const prices: { symbol: string, price: number }[] = await invoke("fetch_prices", { symbols: uniqueSymbols });
+        console.log("Received prices:", prices);
+
+        if (prices.length === 0) {
+          setSyncStatus("No prices returned from API");
+        } else {
+          // Update DB
+          let updatedCount = 0;
+          const priceMap = new Map(prices.map(p => [p.symbol, p.price]));
+
+          for (const asset of allAssets) {
+            const newPrice = priceMap.get(asset.symbol);
+            if (newPrice !== undefined && asset.id) {
+              await db.assets.update(asset.id, {
+                currentPrice: newPrice,
+                lastUpdated: Date.now()
+              });
+              updatedCount++;
+            }
           }
+          setSyncStatus(`Updated ${updatedCount} prices`);
         }
+      } else {
+        setSyncStatus("No assets to refresh");
       }
     } catch (e) {
-      console.error("Price fetch failed (likely not in Tauri):", e);
-      // Fallback: Seed data if empty
+      console.error("Price refresh failed:", e);
+      setSyncStatus("Refresh failed. Check console.");
+
+      // Fallback: Seed data if empty and error occurs (only if count is 0)
       const count = await db.assets.count();
       if (count === 0) {
         await db.assets.bulkAdd([
@@ -120,9 +136,10 @@ function App() {
           { name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
         ]);
       }
+    } finally {
+      setIsRefreshing(false);
+      setTimeout(() => setSyncStatus(""), 3000);
     }
-
-    setTimeout(() => setIsRefreshing(false), 1500);
   };
 
   // Chart data calculation
@@ -234,14 +251,16 @@ function App() {
                       <span className="asset-symbol">{asset.symbol}</span>
                       <span className="dot">•</span>
                       <span className="asset-qty">{asset.quantity.toLocaleString()} units</span>
+                      <span className="dot">•</span>
+                      <span className="asset-avg-cost">Cost: ${asset.cost.toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="asset-market">
                     <p className="asset-price">${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}</p>
                     <div className="asset-price-row">
-                      <span className="unit-price">${(asset.currentPrice || 0).toLocaleString()}</span>
+                      <span className="unit-price" title="Current Market Price">${(asset.currentPrice || 0).toLocaleString()}</span>
                       <p className={`asset-change ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
-                        {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(1) : "0.0"}%
+                        {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(2) : "0.00"}%
                       </p>
                     </div>
                   </div>
