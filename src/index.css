@@ -4,31 +4,39 @@
   font-weight: 400;
 
   color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0c0c0e;
+  color: #ffffff;
+  background-color: #0c0b0a;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Premium Color Palette */
-  --primary: #6366f1;
-  --primary-glow: rgba(99, 102, 241, 0.5);
-  --secondary: #a855f7;
-  --accent: #f43f5e;
-  --background: #0c0c0e;
-  --surface: #16161a;
-  --surface-hover: #1e1e24;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --success: #10b981;
-  --warning: #f59e0b;
-  
-  /* Glassmorphism - Optimized for Mobile Performance */
-  --glass-bg: rgba(22, 22, 26, 0.85); /* Increased opacity to rely less on blur */
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-blur: blur(8px); /* Reduced blur radius */
+  /* Enhanced High-Contrast Warm Palette */
+  --primary: #fbbf24;
+  /* Amber 400 - Brighter for contrast */
+  --primary-glow: rgba(251, 191, 36, 0.4);
+  --secondary: #f59e0b;
+  /* Amber 500 */
+  --accent: #ff4d6d;
+  --background: #0c0b0a;
+  /* Darker warm charcoal */
+  --surface: #1c1917;
+  /* Stone 900 */
+  --surface-hover: #292524;
+  /* Stone 800 */
+  --text-main: #ffffff;
+  /* Pure white for maximum clarity */
+  --text-muted: #d6d3d1;
+  /* Stone 300 - Much brighter than before */
+  --success: #34d399;
+  /* Brighter green */
+  --warning: #fbbf24;
+
+  /* Warm Glassmorphism */
+  --glass-bg: rgba(28, 25, 23, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(12px);
 }
 
 * {
@@ -41,7 +49,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #0c0c0e; /* Simplified background for performance */
+  background: #0c0c0e;
+  /* Simplified background for performance */
   overflow-x: hidden;
   /* Improve scrolling performance */
   -webkit-overflow-scrolling: touch;
@@ -57,6 +66,7 @@ a {
   color: var(--primary);
   text-decoration: inherit;
 }
+
 a:hover {
   color: #818cf8;
 }
@@ -84,14 +94,17 @@ button {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 15px var(--primary-glow);
 }
+
 button:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px var(--primary-glow);
   background-color: #4f46e5;
 }
+
 button:active {
   transform: translateY(0);
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -106,6 +119,7 @@ input {
   font-size: 1rem;
   transition: all 0.2s;
 }
+
 input:focus {
   outline: none;
   border-color: var(--primary);
@@ -129,8 +143,15 @@ input:focus {
 
 /* Utility Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {

@@ -43,7 +43,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose }) => {
             <div className="modal-content">
                 <div className="modal-header">
                     <h3>Add New Asset</h3>
-                    <button className="close-btn" onClick={onClose}><X size={20} /></button>
+                    <button className="close-btn" onClick={onClose}><X size={28} /></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="asset-form">

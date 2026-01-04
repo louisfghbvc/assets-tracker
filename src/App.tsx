@@ -107,25 +107,25 @@ function App() {
         <div className="header-top">
           <div className="logo-group">
             <div className="icon-bg">
-              <GanttChartSquare size={24} color="var(--primary)" />
+              <GanttChartSquare size={32} color="var(--primary)" />
             </div>
             <span>AssetTracker</span>
           </div>
           <div className="header-actions">
             {syncStatus && <span className="sync-status-msg">{syncStatus}</span>}
-            <button className="action-btn sync-btn" onClick={handleSync} title="Sync to Sheets">
-              <CloudSync size={18} />
+            <button className="action-btn sync-btn" onClick={handleSync} data-hint="同步至雲端">
+              <CloudSync size={24} />
             </button>
-            <button className="action-btn" onClick={handleRefresh} title="Fresh Data">
-              <RefreshCw size={18} className={isRefreshing ? "spin" : ""} />
+            <button className="action-btn" onClick={handleRefresh} data-hint="重新整理市價">
+              <RefreshCw size={24} className={isRefreshing ? "spin" : ""} />
             </button>
             {accessToken ? (
-              <button className="action-btn" onClick={handleLogout} title="Logout">
-                <LogOut size={18} />
+              <button className="action-btn" onClick={handleLogout} data-hint="登出帳號">
+                <LogOut size={24} />
               </button>
             ) : (
-              <button className="action-btn" onClick={() => login()} title="Login with Google">
-                <LogIn size={18} />
+              <button className="action-btn" onClick={() => login()} data-hint="使用 Google 登入">
+                <LogIn size={24} />
               </button>
             )}
           </div>
@@ -136,8 +136,6 @@ function App() {
           <h1 className="balance-amount">
             ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </h1>
-          <div className="balance-section">
-          </div>
           <div className="balance-stat">
             <span className={`stat-value ${Number(balanceChange) >= 0 ? 'positive' : 'negative'}`}>
               {Number(balanceChange) >= 0 ? '+' : ''}${Math.abs(Number(balanceChange)).toLocaleString()} ({balanceChangePercent}%)
@@ -150,29 +148,29 @@ function App() {
       {/* Quick Stats */}
       <section className="stats-grid animate-fade-in" style={{ animationDelay: '0.1s' }}>
         <div className="stat-card">
-          <div className="stat-icon tw"><ArrowUpRight size={16} /></div>
+          <div className="stat-icon tw"><ArrowUpRight size={20} /></div>
           <div>
             <p className="stat-card-label">TW Stocks</p>
             <p className="stat-card-value">
-              ${(assets?.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0 / 1000).toFixed(1)}k
+              ${((assets?.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
             </p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon us"><ArrowUpRight size={16} /></div>
+          <div className="stat-icon us"><ArrowUpRight size={20} /></div>
           <div>
             <p className="stat-card-label">US Stocks</p>
             <p className="stat-card-value">
-              ${(assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0 / 1000).toFixed(1)}k
+              ${((assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
             </p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon crypto"><ArrowUpRight size={16} /></div>
+          <div className="stat-icon crypto"><ArrowUpRight size={20} /></div>
           <div>
             <p className="stat-card-label">Crypto</p>
             <p className="stat-card-value">
-              ${(assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0 / 1000).toFixed(1)}k
+              ${((assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
             </p>
           </div>
         </div>
@@ -183,7 +181,7 @@ function App() {
         <div className="section-header">
           <h2>Your Assets</h2>
           <button className="add-btn" onClick={() => setIsModalOpen(true)}>
-            <Plus size={18} />
+            <Plus size={24} />
           </button>
         </div>
 
@@ -191,7 +189,7 @@ function App() {
           {assets?.map((asset) => (
             <div key={asset.id} className="asset-item">
               <div className="asset-icon">
-                {asset.market === 'TW' ? <TrendingUp size={20} /> : asset.market === 'US' ? <TrendingUp size={20} /> : <Wallet size={20} />}
+                {asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
               </div>
               <div className="asset-info">
                 <p className="asset-name">{asset.name}</p>
@@ -203,7 +201,7 @@ function App() {
                   {(((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(1)}%
                 </p>
               </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
+              <ChevronRight size={20} color="var(--text-muted)" />
             </div>
           ))}
         </div>
@@ -214,9 +212,9 @@ function App() {
 
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">
-        <div className="tab-item active"><TrendingUp size={20} /><span>Assets</span></div>
-        <div className="tab-item"><PieChart size={20} /><span>Stats</span></div>
-        <div className="tab-item"><Wallet size={20} /><span>Wallets</span></div>
+        <div className="tab-item active"><TrendingUp size={24} /><span>Assets</span></div>
+        <div className="tab-item"><PieChart size={24} /><span>Stats</span></div>
+        <div className="tab-item"><Wallet size={24} /><span>Wallets</span></div>
       </nav>
     </div>
   );
