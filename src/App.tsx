@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   TrendingUp,
   Wallet,
@@ -32,15 +32,54 @@ import AddAssetModal from "./components/AddAssetModal";
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
   const [syncStatus, setSyncStatus] = useState<string>("");
   const [exchangeRate, setExchangeRate] = useState<number>(32.5);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
 
   const assets = useLiveQuery(() => db.assets.toArray());
+
+  const mergedAssets = useMemo(() => {
+    if (!assets) return [];
+
+    const groups: Record<string, {
+      name: string;
+      symbol: string;
+      market: string;
+      type: string;
+      quantity: number;
+      totalCostBasis: number;
+      currentPrice: number;
+    }> = {};
+
+    assets.forEach(asset => {
+      if (!groups[asset.symbol]) {
+        groups[asset.symbol] = {
+          name: asset.name,
+          symbol: asset.symbol,
+          market: asset.market,
+          type: asset.type,
+          quantity: asset.quantity,
+          totalCostBasis: asset.quantity * asset.cost,
+          currentPrice: asset.currentPrice || 0,
+        };
+      } else {
+        const group = groups[asset.symbol];
+        group.quantity += asset.quantity;
+        group.totalCostBasis += asset.quantity * asset.cost;
+        // Keep the latest current price if available
+        if (asset.currentPrice) group.currentPrice = asset.currentPrice;
+      }
+    });
+
+    return Object.values(groups).map(group => ({
+      ...group,
+      cost: group.quantity > 0 ? group.totalCostBasis / group.quantity : 0,
+    }));
+  }, [assets]);
 
   const fetchExchangeRate = async () => {
     try {
@@ -58,17 +97,20 @@ function App() {
     fetchExchangeRate();
   }, []);
 
-  const handleDeleteAsset = async (id: number) => {
-    console.log("handleDeleteAsset executing for ID:", id);
+  const handleDeleteSymbol = async (symbol: string) => {
+    console.log("handleDeleteSymbol executing for symbol:", symbol);
     try {
-      await db.assets.delete(id);
-      console.log("Asset deleted from DB, ID:", id);
-      setSyncStatus("Asset deleted successfully");
-      setDeletingId(null);
+      const assetsToDelete = await db.assets.where("symbol").equals(symbol).toArray();
+      for (const asset of assetsToDelete) {
+        if (asset.id) await db.assets.delete(asset.id);
+      }
+      console.log(`Position for ${symbol} cleared from DB`);
+      setSyncStatus(`Cleared all ${symbol} records`);
+      setDeletingSymbol(null);
       setTimeout(() => setSyncStatus(""), 3000);
     } catch (err) {
-      console.error("Failed to delete asset:", err);
-      setDeletingId(null);
+      console.error("Failed to delete symbol:", err);
+      setDeletingSymbol(null);
     }
   };
   const login = useGoogleLogin({
@@ -269,11 +311,11 @@ function App() {
             </div>
 
             <div className="assets-list">
-              {assets?.map((asset) => (
+              {mergedAssets?.map((asset) => (
                 <div
-                  key={asset.id}
-                  className={`asset-item ${expandedId === asset.id ? 'expanded' : ''}`}
-                  onClick={() => setExpandedId(expandedId === asset.id ? null : (asset.id || null))}
+                  key={asset.symbol}
+                  className={`asset-item ${expandedSymbol === asset.symbol ? 'expanded' : ''}`}
+                  onClick={() => setExpandedSymbol(expandedSymbol === asset.symbol ? null : asset.symbol)}
                 >
                   <div className="asset-summary">
                     <div className="asset-icon">
@@ -291,40 +333,40 @@ function App() {
                     </div>
                     <div className="asset-actions">
                       <button
-                        className={`delete-item-btn ${deletingId === asset.id ? 'confirm-mode' : ''}`}
-                        title={deletingId === asset.id ? "Confirm Deletion" : "Delete Asset"}
+                        className={`delete-item-btn ${deletingSymbol === asset.symbol ? 'confirm-mode' : ''}`}
+                        title={deletingSymbol === asset.symbol ? "Confirm Deletion" : "Delete Asset"}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (deletingId === asset.id) {
-                            if (asset.id !== undefined) handleDeleteAsset(asset.id);
+                          if (deletingSymbol === asset.symbol) {
+                            handleDeleteSymbol(asset.symbol);
                           } else {
-                            setDeletingId(asset.id || null);
+                            setDeletingSymbol(asset.symbol);
                             setTimeout(() => {
-                              setDeletingId(current => current === asset.id ? null : current);
+                              setDeletingSymbol(current => current === asset.symbol ? null : current);
                             }, 3000);
                           }
                         }}
                       >
-                        {deletingId === asset.id ? (
+                        {deletingSymbol === asset.symbol ? (
                           <span className="confirm-text">Confirm?</span>
                         ) : (
                           <Trash2 size={22} color="white" />
                         )}
                       </button>
-                      <ChevronRight size={20} className={`expand-chevron ${expandedId === asset.id ? 'rotated' : ''}`} />
+                      <ChevronRight size={20} className={`expand-chevron ${expandedSymbol === asset.symbol ? 'rotated' : ''}`} />
                     </div>
                   </div>
 
-                  {expandedId === asset.id && (
+                  {expandedSymbol === asset.symbol && (
                     <div className="asset-details-expanded animate-slide-down">
                       <div className="detail-grid">
                         <div className="detail-item">
-                          <span className="detail-label">Quantity</span>
+                          <span className="detail-label">Total Quantity</span>
                           <span className="detail-value">{asset.quantity.toLocaleString()}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-label">Avg Cost</span>
-                          <span className="detail-value">${asset.cost.toLocaleString()}</span>
+                          <span className="detail-value">${asset.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-label">Unit Price</span>
