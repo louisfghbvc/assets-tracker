@@ -7,26 +7,22 @@ import {
   Plus,
   ChevronRight,
   ArrowUpRight,
-  GanttChartSquare
+  GanttChartSquare,
+  LogIn,
+  LogOut,
+  CloudSync
 } from "lucide-react";
 import "./App.css";
-
-interface Asset {
-  id: string;
-  name: string;
-  symbol: string;
-  value: number;
-  change: number;
-  type: 'TW' | 'US' | 'Crypto';
-}
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "./db/database";
 import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
+import AddAssetModal from "./components/AddAssetModal";
 
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
   const [syncStatus, setSyncStatus] = useState<string>("");
 
@@ -68,14 +64,37 @@ function App() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
 
-    // Seed data if empty (for demonstration)
-    const count = await db.assets.count();
-    if (count === 0) {
-      await db.assets.bulkAdd([
-        { name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
-        { name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
-        { name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
-      ]);
+    try {
+      const allAssets = await db.assets.toArray();
+      const symbols = allAssets.map(a => a.symbol);
+
+      if (symbols.length > 0) {
+        // Call Tauri command
+        const { invoke } = await import("@tauri-apps/api/core");
+        const prices: { symbol: string, price: number }[] = await invoke("fetch_prices", { symbols });
+
+        // Update DB
+        for (const priceInfo of prices) {
+          const asset = allAssets.find(a => a.symbol === priceInfo.symbol);
+          if (asset && asset.id) {
+            await db.assets.update(asset.id, {
+              currentPrice: priceInfo.price,
+              lastUpdated: Date.now()
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Price fetch failed (likely not in Tauri):", e);
+      // Fallback: Seed data if empty
+      const count = await db.assets.count();
+      if (count === 0) {
+        await db.assets.bulkAdd([
+          { name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
+          { name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
+          { name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
+        ]);
+      }
     }
 
     setTimeout(() => setIsRefreshing(false), 1500);
@@ -163,7 +182,9 @@ function App() {
       <section className="assets-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
         <div className="section-header">
           <h2>Your Assets</h2>
-          <button className="add-btn"><Plus size={18} /></button>
+          <button className="add-btn" onClick={() => setIsModalOpen(true)}>
+            <Plus size={18} />
+          </button>
         </div>
 
         <div className="assets-list">
@@ -187,6 +208,9 @@ function App() {
           ))}
         </div>
       </section>
+
+      {/* Modal */}
+      <AddAssetModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">

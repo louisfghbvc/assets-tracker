@@ -13,9 +13,24 @@ export const syncService = {
             // 2. Fetch local data
             const localAssets = await db.assets.toArray();
 
-            // 3. Simple Push-First Strategy (for MVP)
-            // In a real app, we'd compare lastUpdated timestamps
+            // 3. Merging Logic
+            // For simplicity in this version:
+            // Local -> Remote: Push all local to remote
+            // Remote -> Local: Pull all remote to local
             await googleSheetsService.updatePortfolio(accessToken, spreadsheetId, localAssets);
+
+            if (remoteRows.length > 0) {
+                const assetsFromRemote = remoteRows.map((row: any) => ({
+                    symbol: row[0],
+                    name: row[1],
+                    type: row[2],
+                    market: row[3],
+                    quantity: parseFloat(row[4]),
+                    cost: parseFloat(row[5]),
+                    lastUpdated: parseInt(row[6]) || Date.now(),
+                }));
+                await db.assets.bulkPut(assetsFromRemote);
+            }
 
             // 4. Update sync log
             await db.syncLogs.add({
