@@ -33,6 +33,7 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
+  const [deletingRecordId, setDeletingRecordId] = useState<number | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
   const [syncStatus, setSyncStatus] = useState<string>("");
   const [exchangeRate, setExchangeRate] = useState<number>(32.5);
@@ -53,25 +54,35 @@ function App() {
       quantity: number;
       totalCostBasis: number;
       currentPrice: number;
+      items: any[];
     }> = {};
 
     assets.forEach(asset => {
       if (!groups[asset.symbol]) {
         groups[asset.symbol] = {
-          name: asset.name,
+          name: /^\d+$/.test(asset.name) ? asset.symbol : asset.name,
           symbol: asset.symbol,
           market: asset.market,
           type: asset.type,
           quantity: asset.quantity,
           totalCostBasis: asset.quantity * asset.cost,
           currentPrice: asset.currentPrice || 0,
+          items: [asset]
         };
       } else {
         const group = groups[asset.symbol];
+        // Prefer descriptive names (non-numeric and longer)
+        const isCurrentNumeric = /^\d+$/.test(group.name);
+        const isNewNumeric = /^\d+$/.test(asset.name);
+        if ((isCurrentNumeric && !isNewNumeric) ||
+          (!isNewNumeric && asset.name.length > group.name.length)) {
+          group.name = asset.name;
+        }
         group.quantity += asset.quantity;
         group.totalCostBasis += asset.quantity * asset.cost;
         // Keep the latest current price if available
         if (asset.currentPrice) group.currentPrice = asset.currentPrice;
+        group.items.push(asset);
       }
     });
 
@@ -96,6 +107,17 @@ function App() {
   useEffect(() => {
     fetchExchangeRate();
   }, []);
+
+  const handleDeleteAsset = async (id: number) => {
+    console.log("handleDeleteAsset executing for ID:", id);
+    try {
+      await db.assets.delete(id);
+      setSyncStatus("Record deleted");
+      setTimeout(() => setSyncStatus(""), 2000);
+    } catch (err) {
+      console.error("Failed to delete record:", err);
+    }
+  };
 
   const handleDeleteSymbol = async (symbol: string) => {
     console.log("handleDeleteSymbol executing for symbol:", symbol);
@@ -359,25 +381,51 @@ function App() {
 
                   {expandedSymbol === asset.symbol && (
                     <div className="asset-details-expanded animate-slide-down">
-                      <div className="detail-grid">
-                        <div className="detail-item">
-                          <span className="detail-label">Total Quantity</span>
-                          <span className="detail-value">{asset.quantity.toLocaleString()}</span>
+                      <div className="position-summary">
+                        <div className="summary-stat">
+                          <span className="label">Total Quantity</span>
+                          <span className="value">{asset.quantity.toLocaleString()}</span>
                         </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Avg Cost</span>
-                          <span className="detail-value">${asset.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Unit Price</span>
-                          <span className="detail-value">${(asset.currentPrice || 0).toLocaleString()}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Profit/Loss</span>
-                          <span className={`detail-value ${(asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative'}`}>
-                            {asset.cost !== 0 ? (((asset.currentPrice || 0) - asset.cost) / asset.cost * 100).toFixed(2) : "0.00"}%
+                        <div className="summary-stat">
+                          <span className="label">Avg Cost</span>
+                          <span className="value">
+                            ${asset.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                           </span>
                         </div>
+                      </div>
+
+                      <div className="records-list">
+                        <p className="records-header">Individual Records</p>
+                        {asset.items.map((item: any, idx: number) => (
+                          <div key={item.id || idx} className="record-item">
+                            <div className="record-info">
+                              <span className="record-qty">{item.quantity.toLocaleString()} units</span>
+                              <span className="record-cost"> @ ${item.cost.toLocaleString()}</span>
+                            </div>
+                            <button
+                              className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (deletingRecordId === item.id) {
+                                  if (item.id) handleDeleteAsset(item.id);
+                                  setDeletingRecordId(null);
+                                } else {
+                                  setDeletingRecordId(item.id || null);
+                                  setTimeout(() => {
+                                    setDeletingRecordId(curr => curr === item.id ? null : curr);
+                                  }, 3000);
+                                }
+                              }}
+                              title={deletingRecordId === item.id ? "Confirm Deletion" : "Delete this record"}
+                            >
+                              {deletingRecordId === item.id ? (
+                                <span className="confirm-text-small">Confirm?</span>
+                              ) : (
+                                <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>✕</span>
+                              )}
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

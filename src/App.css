@@ -439,39 +439,112 @@ body {
   background: rgba(255, 255, 255, 0.01);
 }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  padding-top: 16px;
+.position-summary {
+  display: flex;
+  gap: 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  margin-bottom: 12px;
 }
 
-.detail-item {
+.summary-stat {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.detail-label {
-  font-size: 0.7rem;
+.summary-stat .label {
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--text-muted);
   font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
-.detail-value {
-  font-size: 0.95rem;
+.summary-stat .value {
+  font-size: 1rem;
   font-weight: 700;
+  color: var(--primary);
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.records-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+.record-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  transition: all 0.2s ease;
+}
+
+.record-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.record-info {
+  font-size: 0.85rem;
+  font-weight: 500;
   color: #fff;
 }
 
-.detail-value.positive {
-  color: var(--success);
+.record-qty {
+  color: #fff;
 }
 
-.detail-value.negative {
-  color: var(--accent);
+.record-cost {
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.record-delete-btn {
+  background: #f43f5e !important;
+  color: #ffffff !important;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 12px;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
+}
+
+.record-delete-btn.confirm-mode {
+  width: auto !important;
+  padding: 0 12px;
+  background: #e11d48 !important;
+}
+
+.confirm-text-small {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.record-delete-btn:hover {
+  background: #ff4d6d !important;
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(244, 63, 94, 0.45);
 }
 
 .animate-slide-down {
