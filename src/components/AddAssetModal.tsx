@@ -19,8 +19,13 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        let finalSymbol = symbol.trim().toUpperCase();
+        if (market === 'TW' && !finalSymbol.includes('.')) {
+            finalSymbol = `${finalSymbol}.TW`;
+        }
+
         await db.assets.add({
-            symbol: symbol.toUpperCase(),
+            symbol: finalSymbol,
             name,
             type: market === 'Crypto' ? 'crypto' : 'stock',
             market,
@@ -64,12 +69,16 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     <div className="form-group">
-                        <label>Symbol (e.g., 2330.TW, AAPL, BTC)</label>
+                        <label>
+                            {market === 'TW' ? 'Stock Code (e.g., 2330)' :
+                                market === 'US' ? 'Symbol (e.g., AAPL)' :
+                                    'Crypto Symbol (e.g., BTC)'}
+                        </label>
                         <input
                             type="text"
                             value={symbol}
                             onChange={(e) => setSymbol(e.target.value)}
-                            placeholder="Enter symbol..."
+                            placeholder={market === 'TW' ? "Enter number..." : "Enter symbol..."}
                             required
                         />
                     </div>
@@ -111,7 +120,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     <button type="submit" className="submit-btn">
-                        <Plus size={18} />
+                        <Plus size={24} />
                         <span>Add Asset</span>
                     </button>
                 </form>
