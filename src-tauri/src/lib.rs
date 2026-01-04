@@ -8,20 +8,68 @@ pub struct PriceInfo {
 
 #[tauri::command]
 async fn fetch_prices(symbols: Vec<String>) -> Result<Vec<PriceInfo>, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+
     let mut results = Vec::new();
 
     for symbol in symbols {
-        // Simple mock/public API logic
-        // For production, you'd use a real provider (Alpha Vantage, Yahoo, etc.)
-        // Here we'll simulate a fetch
-        let price = match symbol.as_str() {
-            "BTC" => 95000.0,
-            "2330.TW" => 1045.0,
-            "AAPL" => 220.5,
-            _ => 100.0,
+        // Yahoo Finance symbol mapping
+        let yahoo_symbol = if !symbol.contains('.')
+            && symbol.len() <= 5
+            && symbol.chars().all(|c| c.is_ascii_uppercase())
+        {
+            // Likely US Stock or Crypto. Yahoo needs BTC-USD for Crypto usually.
+            // We'll try common suffixes or mapping in a real app.
+            symbol.clone()
+        } else {
+            symbol.clone()
         };
 
-        results.push(PriceInfo { symbol, price });
+        let url = format!(
+            "https://query1.finance.yahoo.com/v8/finance/chart/{}?interval=1m&range=1d",
+            yahoo_symbol
+        );
+
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                if let Ok(json) = resp.json::<serde_json::Value>().await {
+                    if let Some(price) =
+                        json["chart"]["result"][0]["meta"]["regularMarketPrice"].as_f64()
+                    {
+                        results.push(PriceInfo { symbol, price });
+                        continue;
+                    }
+                }
+            }
+            Err(e) => {
+                println!("Error fetching {}: {}", symbol, e);
+            }
+        }
+
+        // Fallback for Crypto if not found (e.g. BTC -> BTC-USD)
+        if !symbol.contains('.') {
+            let alt_symbol = format!("{}-USD", symbol);
+            let alt_url = format!(
+                "https://query1.finance.yahoo.com/v8/finance/chart/{}?interval=1m&range=1d",
+                alt_symbol
+            );
+            if let Ok(resp) = client.get(&alt_url).send().await {
+                if let Ok(json) = resp.json::<serde_json::Value>().await {
+                    if let Some(price) =
+                        json["chart"]["result"][0]["meta"]["regularMarketPrice"].as_f64()
+                    {
+                        results.push(PriceInfo { symbol, price });
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // Final fallback if all fails (stay at existing price) or return a default
+        // results.push(PriceInfo { symbol, price: 0.0 });
     }
 
     Ok(results)
