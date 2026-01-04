@@ -135,6 +135,7 @@ function App() {
       setDeletingSymbol(null);
     }
   };
+
   const login = useGoogleLogin({
     onSuccess: (tokenResponse) => {
       setAccessToken(tokenResponse.access_token);
@@ -351,6 +352,9 @@ function App() {
                       <p className="asset-price">
                         ${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}
                         <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
+                      </p>
+                      <p className="market-per-unit">
+                        ${(asset.currentPrice || 0).toLocaleString()} / unit
                       </p>
                     </div>
                     <div className="asset-actions">
