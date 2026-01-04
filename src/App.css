@@ -437,6 +437,26 @@ body {
   padding: 0 20px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.01);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for records list */
+.asset-details-expanded::-webkit-scrollbar {
+  width: 4px;
+}
+
+.asset-details-expanded::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.asset-details-expanded::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.asset-details-expanded::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .position-summary {
@@ -560,7 +580,7 @@ body {
 
   to {
     opacity: 1;
-    max-height: 200px;
+    max-height: 400px;
     transform: translateY(0);
   }
 }
