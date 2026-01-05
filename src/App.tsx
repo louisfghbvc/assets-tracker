@@ -7,7 +7,6 @@ import {
   Plus,
   ChevronRight,
   ArrowUpRight,
-  LogIn,
   LogOut,
   CloudUpload,
   CloudDownload,
