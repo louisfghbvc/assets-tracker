@@ -144,7 +144,12 @@ function App() {
     if (result.success) {
       setSyncStatus(`Backup successful! (${result.count} assets)`);
     } else {
-      setSyncStatus(`Backup failed: ${result.error}`);
+      if (result.error === "UNAUTHORIZED") {
+        handleLogout();
+        setSyncStatus("Session expired. Please log in again.");
+      } else {
+        setSyncStatus(`Backup failed: ${result.error}`);
+      }
     }
     setTimeout(() => setSyncStatus(""), 3000);
   };
@@ -166,7 +171,12 @@ function App() {
       setSyncStatus(`Restore successful! (${result.count} assets)`);
       await handleRefresh();
     } else {
-      setSyncStatus(`Restore failed: ${result.error}`);
+      if (result.error === "UNAUTHORIZED") {
+        handleLogout();
+        setSyncStatus("Session expired. Please log in again.");
+      } else {
+        setSyncStatus(`Restore failed: ${result.error}`);
+      }
     }
     setTimeout(() => setSyncStatus(""), 3000);
   };

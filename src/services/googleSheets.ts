@@ -19,6 +19,11 @@ export const googleSheetsService = {
                 headers: { Authorization: `Bearer ${accessToken}` },
             }
         );
+
+        if (response.status === 401) {
+            throw new Error("UNAUTHORIZED");
+        }
+
         const data = await response.json();
         return data.values || [];
     },
@@ -54,17 +59,26 @@ export const googleSheetsService = {
                 body: JSON.stringify(body),
             }
         );
+
+        if (response.status === 401) {
+            throw new Error("UNAUTHORIZED");
+        }
+
         return response.json();
     },
 
     async clearSheet(accessToken: string, spreadsheetId: string) {
-        await fetch(
+        const response = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A1:Z1000:clear`,
             {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${accessToken}` },
             }
         );
+
+        if (response.status === 401) {
+            throw new Error("UNAUTHORIZED");
+        }
     },
 
     async findOrCreateSpreadsheet(accessToken: string) {
@@ -102,6 +116,11 @@ export const googleSheetsService = {
                 sheets: [{ properties: { title: SHEET_NAME } }]
             }),
         });
+
+        if (response.status === 401) {
+            throw new Error("UNAUTHORIZED");
+        }
+
         const data = await response.json();
         spreadsheetId = data.spreadsheetId;
         if (spreadsheetId) {

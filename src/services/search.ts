@@ -15,12 +15,13 @@ export const searchService = {
             let results: SearchResult[] = [];
 
             if (market === 'TW') {
-                // For TW, combine TWSE (official) and Yahoo (Fuzzy backup)
-                const [twseResults, yahooResults] = await Promise.all([
+                // For TW, combine TWSE (official), TPEx (OTC), and Yahoo (Fuzzy backup)
+                const [twseResults, tpexResults, yahooResults] = await Promise.all([
                     this.searchTW(query),
+                    this.searchTPEx(query),
                     this.searchYahoo(query, 'TW')
                 ]);
-                results = [...twseResults, ...yahooResults];
+                results = [...twseResults, ...tpexResults, ...yahooResults];
             } else {
                 results = await this.searchYahoo(query, market);
             }
@@ -80,6 +81,35 @@ export const searchService = {
         }
     },
 
+    async searchTPEx(query: string): Promise<SearchResult[]> {
+        const proxy = "https://corsproxy.io/?";
+        const url = `https://www.tpex.org.tw/www/zh-tw/api/codeQuery?type=all&query=${encodeURIComponent(query)}`;
+
+        try {
+            const res = await fetch(`${proxy}${encodeURIComponent(url)}`);
+            const data = await res.json();
+
+            // Structure: { suggestions: [ { data: ["3293 鈊象\t3293"], type: "上櫃公司" } ] }
+            return (data.suggestions || []).flatMap((group: any) =>
+                (group.data || []).map((s: string) => {
+                    const parts = s.trim().split(/\s+/);
+                    const symbolOnly = parts[0];
+                    const nameOnly = parts.slice(1).join(' ').split('\t')[0];
+
+                    return {
+                        symbol: `${symbolOnly}.TWO`,
+                        name: nameOnly,
+                        market: 'TW' as const,
+                        type: 'stock' as const
+                    };
+                })
+            );
+        } catch (e) {
+            console.error("TPEx search failed:", e);
+            return [];
+        }
+    },
+
     async searchYahoo(query: string, market: 'TW' | 'US' | 'Crypto'): Promise<SearchResult[]> {
         const proxy = "https://corsproxy.io/?";
         const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=15`;
@@ -94,7 +124,7 @@ export const searchService = {
                     let type: 'stock' | 'crypto' = q.quoteType === 'CRYPTOCURRENCY' ? 'crypto' : 'stock';
                     let detectedMarket: 'TW' | 'US' | 'Crypto' = market;
 
-                    if (q.symbol.endsWith('.TW')) detectedMarket = 'TW';
+                    if (q.symbol.endsWith('.TW') || q.symbol.endsWith('.TWO')) detectedMarket = 'TW';
                     else if (type === 'crypto') detectedMarket = 'Crypto';
                     else detectedMarket = 'US';
 
