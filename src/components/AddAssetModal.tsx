@@ -26,6 +26,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
         }
 
         await db.assets.add({
+            recordId: crypto.randomUUID(),
             symbol: finalSymbol,
             name: name.trim() || finalSymbol,
             type: market === 'Crypto' ? 'crypto' : 'stock',

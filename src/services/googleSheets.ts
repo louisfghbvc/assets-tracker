@@ -1,6 +1,7 @@
 const SHEET_NAME = 'Portfolio';
 
 export interface GoogleSheetAsset {
+    recordId: string;
     symbol: string;
     name: string;
     type: string;
@@ -13,7 +14,7 @@ export interface GoogleSheetAsset {
 export const googleSheetsService = {
     async fetchPortfolio(accessToken: string, spreadsheetId: string) {
         const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A2:G100`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A2:H1000`,
             {
                 headers: { Authorization: `Bearer ${accessToken}` },
             }
@@ -24,6 +25,7 @@ export const googleSheetsService = {
 
     async updatePortfolio(accessToken: string, spreadsheetId: string, assets: any[]) {
         const values = assets.map(asset => [
+            asset.recordId,
             asset.symbol,
             asset.name,
             asset.type,
@@ -36,13 +38,13 @@ export const googleSheetsService = {
         // Add headers if updating the whole sheet
         const body = {
             values: [
-                ['Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated'],
+                ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated'],
                 ...values
             ]
         };
 
         const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A1:G${assets.length + 1}?valueInputOption=USER_ENTERED`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A1:H${assets.length + 1}?valueInputOption=USER_ENTERED`,
             {
                 method: 'PUT',
                 headers: {
@@ -55,15 +57,40 @@ export const googleSheetsService = {
         return response.json();
     },
 
-    async findOrCreateSpreadsheet(accessToken: string) {
-        // 1. Search for existing spreadsheet named "AssetsTracker"
-        // (This would typically use the Drive API, but for simplicity we'll assume the user provides an ID or we create one)
-        // For this implementation, let's create a new one if we don't have an ID
+    async clearSheet(accessToken: string, spreadsheetId: string) {
+        await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A1:Z1000:clear`,
+            {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${accessToken}` },
+            }
+        );
+    },
 
-        // Check if we have a saved ID in local storage
+    async findOrCreateSpreadsheet(accessToken: string) {
+        // 1. Check local storage first
         let spreadsheetId = localStorage.getItem('google_spreadsheet_id');
         if (spreadsheetId) return spreadsheetId;
 
+        // 2. Search Drive for existing "AssetsTracker_DB"
+        try {
+            const query = encodeURIComponent("name = 'AssetsTracker_DB' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
+            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const searchData = await searchRes.json();
+
+            if (searchData.files && searchData.files.length > 0) {
+                spreadsheetId = searchData.files[0].id;
+                console.log("Found existing spreadsheet on Drive:", spreadsheetId);
+                localStorage.setItem('google_spreadsheet_id', spreadsheetId!);
+                return spreadsheetId;
+            }
+        } catch (e) {
+            console.error("Failed to search Drive:", e);
+        }
+
+        // 3. Create new if not found
         const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
             method: 'POST',
             headers: {

@@ -10,7 +10,8 @@ import {
   GanttChartSquare,
   LogIn,
   LogOut,
-  CloudSync,
+  CloudUpload,
+  CloudDownload,
   Trash2
 } from "lucide-react";
 import {
@@ -28,6 +29,9 @@ import { db } from "./db/database";
 import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
 import AddAssetModal from "./components/AddAssetModal";
+import { GOOGLE_CLIENT_ID } from "./config";
+
+console.log("Google Client ID Loaded:", GOOGLE_CLIENT_ID ? "Yes" : "No (Empty)");
 
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -40,6 +44,7 @@ function App() {
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const assets = useLiveQuery(() => db.assets.toArray());
 
@@ -94,12 +99,21 @@ function App() {
 
   const fetchExchangeRate = async () => {
     try {
+      if (!(window as any).__TAURI_INTERNALS__) {
+        console.log("Web version: Fetching exchange rate via public API...");
+        const res = await fetch("https://open.er-api.com/v6/latest/USD");
+        const data = await res.json();
+        const rate = data.rates?.TWD || 32.5;
+        setExchangeRate(rate);
+        return rate;
+      }
       const { invoke } = await import("@tauri-apps/api/core");
       const rate: number = await invoke("fetch_exchange_rate");
       setExchangeRate(rate);
       return rate;
     } catch (e) {
       console.error("Failed to fetch exchange rate:", e);
+      setExchangeRate(32.5); // Fallback to hardcoded default
       return 32.5;
     }
   };
@@ -111,6 +125,10 @@ function App() {
   const handleDeleteAsset = async (id: number) => {
     console.log("handleDeleteAsset executing for ID:", id);
     try {
+      const asset = await db.assets.get(id);
+      if (asset?.recordId) {
+        await db.deletedAssets.add({ recordId: asset.recordId });
+      }
       await db.assets.delete(id);
       setSyncStatus("Record deleted");
       setTimeout(() => setSyncStatus(""), 2000);
@@ -124,6 +142,9 @@ function App() {
     try {
       const assetsToDelete = await db.assets.where("symbol").equals(symbol).toArray();
       for (const asset of assetsToDelete) {
+        if (asset.recordId) {
+          await db.deletedAssets.add({ recordId: asset.recordId });
+        }
         if (asset.id) await db.assets.delete(asset.id);
       }
       console.log(`Position for ${symbol} cleared from DB`);
@@ -141,20 +162,46 @@ function App() {
       setAccessToken(tokenResponse.access_token);
       localStorage.setItem("google_access_token", tokenResponse.access_token);
     },
-    scope: "https://www.googleapis.com/auth/spreadsheets",
+    scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
   });
 
-  const handleSync = async () => {
+  const handleCloudUpload = () => {
     if (!accessToken) {
       login();
       return;
     }
-    setSyncStatus("Syncing...");
-    const result = await syncService.sync(accessToken);
+    performUpload();
+  };
+
+  const performUpload = async () => {
+    setSyncStatus("Backing up to cloud...");
+    const result = await syncService.upload(accessToken!);
     if (result.success) {
-      setSyncStatus(`Success! Synced ${result.count} assets`);
+      setSyncStatus(`Backup successful! (${result.count} assets)`);
     } else {
-      setSyncStatus(`Sync Failed: ${result.error}`);
+      setSyncStatus(`Backup failed: ${result.error}`);
+    }
+    setTimeout(() => setSyncStatus(""), 3000);
+  };
+
+  const handleCloudDownload = () => {
+    if (!accessToken) {
+      login();
+      return;
+    }
+    if (window.confirm("Restore from cloud? This will REPLACE all your local data.")) {
+      performDownload();
+    }
+  };
+
+  const performDownload = async () => {
+    setSyncStatus("Restoring from cloud...");
+    const result = await syncService.download(accessToken!);
+    if (result.success) {
+      setSyncStatus(`Restore successful! (${result.count} assets)`);
+      await handleRefresh(); // Refresh prices immediately after restore
+    } else {
+      setSyncStatus(`Restore failed: ${result.error}`);
     }
     setTimeout(() => setSyncStatus(""), 3000);
   };
@@ -177,31 +224,134 @@ function App() {
   const balanceChange = totalBalance - yesterdayBalance;
   const balanceChangePercent = yesterdayBalance !== 0 ? ((balanceChange / yesterdayBalance) * 100).toFixed(1) : "0.0";
 
+  const fetchPricesWeb = async (symbols: string[]) => {
+    const results: { symbol: string; price: number }[] = [];
+    const proxies = [
+      "https://corsproxy.io/?",
+      "https://api.allorigins.win/raw?url="
+    ];
+
+    for (const symbol of symbols) {
+      let fetched = false;
+      console.log(`Web Fetching: ${symbol}`);
+      const timestamp = Date.now();
+      const yahooSymbol = symbol === 'BTC' ? 'BTC-USD' : symbol === 'ETH' ? 'ETH-USD' : symbol === 'SOL' ? 'SOL-USD' : symbol;
+
+      const targetUrl = symbol.endsWith(".TW")
+        ? `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol.replace(".TW", "")}.tw&json=1&_=${timestamp}`
+        : `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d&_=${timestamp}`;
+
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(`${proxy}${encodeURIComponent(targetUrl)}`);
+          if (!res.ok) throw new Error(`Status ${res.status}`);
+
+          let json: any;
+          // AllOrigins raw returns text, corsproxy.io returns direct response
+          const text = await res.text();
+          try {
+            json = JSON.parse(text);
+          } catch (e) {
+            // If it's the allorigins non-raw wrapped version (fallback)
+            const wrapped = JSON.parse(text);
+            json = JSON.parse(wrapped.contents);
+          }
+
+          if (symbol.endsWith(".TW")) {
+            if (json.msgArray && json.msgArray[0]) {
+              const msg = json.msgArray[0];
+              const rawZ = msg.z;
+              const rawY = msg.y;
+              const rawB = msg.b?.split('_')[0];
+              const rawA = msg.a?.split('_')[0];
+              const finalPriceStr = (rawZ && rawZ !== "-") ? rawZ : (rawB && rawB !== "-") ? rawB : (rawA && rawA !== "-") ? rawA : rawY;
+              const price = parseFloat(finalPriceStr || "0");
+              if (price > 0 && !isNaN(price)) {
+                results.push({ symbol, price });
+                fetched = true;
+                break;
+              }
+            }
+          } else {
+            const price = json.chart?.result?.[0]?.meta?.regularMarketPrice;
+            if (price) {
+              results.push({ symbol, price });
+              fetched = true;
+              break;
+            }
+          }
+        } catch (e) {
+          // Log skip info silently unless it's the last one
+          if (proxy === proxies[proxies.length - 1]) {
+            console.error(`Web Fetch finally failed for ${symbol} after trying all proxies.`);
+          } else {
+            console.log(`Proxy ${proxy} skipped for ${symbol}, trying fallback...`);
+          }
+          continue;
+        }
+      }
+
+      // Special case for TWSE: If TSE fails, try OTC
+      if (!fetched && symbol.endsWith(".TW")) {
+        const code = symbol.replace(".TW", "");
+        const otcUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${code}.tw&json=1&_=${timestamp}`;
+        for (const proxy of proxies) {
+          try {
+            const res = await fetch(`${proxy}${encodeURIComponent(otcUrl)}`);
+            const text = await res.text();
+            let json = JSON.parse(text);
+            if (json.contents) json = JSON.parse(json.contents);
+
+            if (json.msgArray && json.msgArray[0]) {
+              const msg = json.msgArray[0];
+              const finalPriceStr = (msg.z && msg.z !== "-") ? msg.z : (msg.b?.split('_')[0] !== "-") ? msg.b?.split('_')[0] : msg.y;
+              const price = parseFloat(finalPriceStr || "0");
+              if (price > 0 && !isNaN(price)) {
+                results.push({ symbol, price });
+                break;
+              }
+            }
+          } catch (e) { continue; }
+        }
+      }
+    }
+    return results;
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setSyncStatus("Refreshing prices...");
 
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await fetchExchangeRate();
-
       const allAssets = await db.assets.toArray();
       const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
+      let prices: { symbol: string, price: number }[] = [];
+
+      if (!(window as any).__TAURI_INTERNALS__) {
+        await fetchExchangeRate();
+        if (uniqueSymbols.length > 0) {
+          prices = await fetchPricesWeb(uniqueSymbols);
+        }
+      } else {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await fetchExchangeRate();
+        if (uniqueSymbols.length > 0) {
+          prices = await invoke("fetch_prices", { symbols: uniqueSymbols });
+        }
+      }
 
       if (uniqueSymbols.length > 0) {
-        console.log("Refreshing prices for symbols:", uniqueSymbols);
-        const prices: { symbol: string, price: number }[] = await invoke("fetch_prices", { symbols: uniqueSymbols });
-        console.log("Received prices:", prices);
-
         if (prices.length === 0) {
           setSyncStatus("No prices returned from API");
         } else {
           let updatedCount = 0;
-          const priceMap = new Map(prices.map(p => [p.symbol, p.price]));
+          const priceMap = new Map(prices.map(p => [p.symbol.trim(), p.price]));
 
           for (const asset of allAssets) {
-            const newPrice = priceMap.get(asset.symbol);
+            const trimmedSymbol = asset.symbol.trim();
+            const newPrice = priceMap.get(trimmedSymbol);
             if (newPrice !== undefined && asset.id) {
+              console.log(`Updating DB for ${trimmedSymbol}: ${newPrice}`);
               await db.assets.update(asset.id, {
                 currentPrice: newPrice,
                 lastUpdated: Date.now()
@@ -258,18 +408,37 @@ function App() {
               <span className="exchange-rate-badge">USD/TWD: {exchangeRate.toFixed(2)}</span>
             )}
             {syncStatus && <span className="sync-status-msg">{syncStatus}</span>}
-            <button className="action-btn sync-btn" onClick={handleSync} data-hint="同步至雲端">
-              <CloudSync size={24} />
+            <button className="action-btn" onClick={handleCloudUpload} data-hint="備份至雲端">
+              <CloudUpload size={24} />
+            </button>
+            <button className="action-btn" onClick={handleCloudDownload} data-hint="從雲端還原">
+              <CloudDownload size={24} />
             </button>
             <button className="action-btn" onClick={handleRefresh} data-hint="重新整理市價">
               <RefreshCw size={24} className={isRefreshing ? "spin" : ""} />
             </button>
             {accessToken ? (
-              <button className="action-btn" onClick={handleLogout} data-hint="登出帳號">
-                <LogOut size={24} />
+              <button
+                className={`action-btn ${isLoggingOut ? 'confirm-mode' : ''}`}
+                onClick={() => {
+                  if (isLoggingOut) {
+                    handleLogout();
+                    setIsLoggingOut(false);
+                  } else {
+                    setIsLoggingOut(true);
+                    setTimeout(() => setIsLoggingOut(false), 3000);
+                  }
+                }}
+                data-hint={isLoggingOut ? "Confirm Logout?" : "Logout Account"}
+              >
+                {isLoggingOut ? (
+                  <span className="confirm-text-small">Confirm?</span>
+                ) : (
+                  <LogOut size={24} />
+                )}
               </button>
             ) : (
-              <button className="action-btn" onClick={() => login()} data-hint="使用 Google 登入">
+              <button className="action-btn" onClick={login} data-hint="使用 Google 登入">
                 <LogIn size={24} />
               </button>
             )}
