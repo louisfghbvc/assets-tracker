@@ -122,9 +122,9 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
 
                     <div className="form-group" style={{ position: 'relative' }}>
                         <label>
-                            {market === 'TW' ? 'Stock Code / Name (e.g., 台積電)' :
-                                market === 'US' ? 'Symbol / Name (e.g., AAPL)' :
-                                    'Crypto Symbol / Name (e.g., BTC)'}
+                            {market === 'TW' ? 'Search Code or Name (e.g., 2330 / 台積電)' :
+                                market === 'US' ? 'Search Ticker or Name (e.g., AAPL / Apple)' :
+                                    'Search Crypto (e.g., BTC / Bitcoin)'}
                         </label>
                         <div style={{ position: 'relative' }}>
                             <input
@@ -132,10 +132,10 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                                 value={symbol}
                                 onChange={(e) => {
                                     setSymbol(e.target.value);
-                                    if (name) setName(''); // Clear name if user starts re-typing symbol
+                                    if (name) setName(''); // Clear auto-filled name if user re-types
                                 }}
                                 onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                                placeholder={market === 'TW' ? "Enter number or name..." : "Enter symbol or name..."}
+                                placeholder="Start typing to search..."
                                 required
                                 autoComplete="off"
                             />
@@ -166,12 +166,12 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                     </div>
 
                     <div className="form-group">
-                        <label>Display Name</label>
+                        <label>Asset Display Name</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Optional (Auto-filled from search)..."
+                            placeholder="Optional name override..."
                         />
                     </div>
 

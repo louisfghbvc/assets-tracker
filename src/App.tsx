@@ -28,10 +28,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "./db/database";
 import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
+import { priceService } from "./services/price";
 import AddAssetModal from "./components/AddAssetModal";
-import { GOOGLE_CLIENT_ID } from "./config";
-
-console.log("Google Client ID Loaded:", GOOGLE_CLIENT_ID ? "Yes" : "No (Empty)");
 
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -65,7 +63,7 @@ function App() {
     assets.forEach(asset => {
       if (!groups[asset.symbol]) {
         groups[asset.symbol] = {
-          name: /^\d+$/.test(asset.name) ? asset.symbol : asset.name,
+          name: asset.name,
           symbol: asset.symbol,
           market: asset.market,
           type: asset.type,
@@ -76,16 +74,8 @@ function App() {
         };
       } else {
         const group = groups[asset.symbol];
-        // Prefer descriptive names (non-numeric and longer)
-        const isCurrentNumeric = /^\d+$/.test(group.name);
-        const isNewNumeric = /^\d+$/.test(asset.name);
-        if ((isCurrentNumeric && !isNewNumeric) ||
-          (!isNewNumeric && asset.name.length > group.name.length)) {
-          group.name = asset.name;
-        }
         group.quantity += asset.quantity;
         group.totalCostBasis += asset.quantity * asset.cost;
-        // Keep the latest current price if available
         if (asset.currentPrice) group.currentPrice = asset.currentPrice;
         group.items.push(asset);
       }
@@ -98,24 +88,9 @@ function App() {
   }, [assets]);
 
   const fetchExchangeRate = async () => {
-    try {
-      if (!(window as any).__TAURI_INTERNALS__) {
-        console.log("Web version: Fetching exchange rate via public API...");
-        const res = await fetch("https://open.er-api.com/v6/latest/USD");
-        const data = await res.json();
-        const rate = data.rates?.TWD || 32.5;
-        setExchangeRate(rate);
-        return rate;
-      }
-      const { invoke } = await import("@tauri-apps/api/core");
-      const rate: number = await invoke("fetch_exchange_rate");
-      setExchangeRate(rate);
-      return rate;
-    } catch (e) {
-      console.error("Failed to fetch exchange rate:", e);
-      setExchangeRate(32.5); // Fallback to hardcoded default
-      return 32.5;
-    }
+    const rate = await priceService.fetchExchangeRate();
+    setExchangeRate(rate);
+    return rate;
   };
 
   useEffect(() => {
@@ -123,7 +98,6 @@ function App() {
   }, []);
 
   const handleDeleteAsset = async (id: number) => {
-    console.log("handleDeleteAsset executing for ID:", id);
     try {
       await db.assets.delete(id);
       setSyncStatus("Record deleted");
@@ -134,13 +108,11 @@ function App() {
   };
 
   const handleDeleteSymbol = async (symbol: string) => {
-    console.log("handleDeleteSymbol executing for symbol:", symbol);
     try {
       const assetsToDelete = await db.assets.where("symbol").equals(symbol).toArray();
       for (const asset of assetsToDelete) {
         if (asset.id) await db.assets.delete(asset.id);
       }
-      console.log(`Position for ${symbol} cleared from DB`);
       setSyncStatus(`Cleared all ${symbol} records`);
       setDeletingSymbol(null);
       setTimeout(() => setSyncStatus(""), 3000);
@@ -192,7 +164,7 @@ function App() {
     const result = await syncService.download(accessToken!);
     if (result.success) {
       setSyncStatus(`Restore successful! (${result.count} assets)`);
-      await handleRefresh(); // Refresh prices immediately after restore
+      await handleRefresh();
     } else {
       setSyncStatus(`Restore failed: ${result.error}`);
     }
@@ -202,6 +174,59 @@ function App() {
   const handleLogout = () => {
     setAccessToken(null);
     localStorage.removeItem("google_access_token");
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setSyncStatus("Refreshing prices...");
+
+    try {
+      const allAssets = await db.assets.toArray();
+      const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
+
+      await fetchExchangeRate();
+
+      if (uniqueSymbols.length > 0) {
+        const prices = await priceService.fetchPrices(uniqueSymbols);
+
+        if (prices.length === 0) {
+          setSyncStatus("No prices returned from API");
+        } else {
+          let updatedCount = 0;
+          const priceMap = new Map(prices.map(p => [p.symbol.trim(), p.price]));
+
+          for (const asset of allAssets) {
+            const trimmedSymbol = asset.symbol.trim();
+            const newPrice = priceMap.get(trimmedSymbol);
+            if (newPrice !== undefined && asset.id) {
+              await db.assets.update(asset.id, {
+                currentPrice: newPrice,
+                lastUpdated: Date.now()
+              });
+              updatedCount++;
+            }
+          }
+          setSyncStatus(`Updated ${updatedCount} prices`);
+        }
+      } else {
+        setSyncStatus("No assets to refresh");
+      }
+    } catch (e) {
+      console.error("Price refresh failed:", e);
+      setSyncStatus("Refresh failed.");
+
+      const count = await db.assets.count();
+      if (count === 0) {
+        await db.assets.bulkAdd([
+          { recordId: crypto.randomUUID(), name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
+          { recordId: crypto.randomUUID(), name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
+          { recordId: crypto.randomUUID(), name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
+        ]);
+      }
+    } finally {
+      setIsRefreshing(false);
+      setTimeout(() => setSyncStatus(""), 3000);
+    }
   };
 
   const totalBalance = assets?.reduce((sum, asset) => {
@@ -217,171 +242,10 @@ function App() {
   const balanceChange = totalBalance - yesterdayBalance;
   const balanceChangePercent = yesterdayBalance !== 0 ? ((balanceChange / yesterdayBalance) * 100).toFixed(1) : "0.0";
 
-  const fetchPricesWeb = async (symbols: string[]) => {
-    const results: { symbol: string; price: number }[] = [];
-    const proxies = [
-      "https://corsproxy.io/?",
-      "https://api.allorigins.win/raw?url="
-    ];
-
-    for (const symbol of symbols) {
-      let fetched = false;
-      console.log(`Web Fetching: ${symbol}`);
-      const timestamp = Date.now();
-      const sanitizedSymbol = symbol.trim().split(/\s+/)[0]; // Extra layer of safety
-      const yahooSymbol = sanitizedSymbol === 'BTC' ? 'BTC-USD' : sanitizedSymbol === 'ETH' ? 'ETH-USD' : sanitizedSymbol === 'SOL' ? 'SOL-USD' : sanitizedSymbol;
-
-      const targetUrl = sanitizedSymbol.endsWith(".TW")
-        ? `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${sanitizedSymbol.replace(".TW", "")}.tw&json=1&_=${timestamp}`
-        : `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d&_=${timestamp}`;
-
-      for (const proxy of proxies) {
-        try {
-          const res = await fetch(`${proxy}${encodeURIComponent(targetUrl)}`);
-          if (!res.ok) throw new Error(`Status ${res.status}`);
-
-          let json: any;
-          // AllOrigins raw returns text, corsproxy.io returns direct response
-          const text = await res.text();
-          try {
-            json = JSON.parse(text);
-          } catch (e) {
-            // If it's the allorigins non-raw wrapped version (fallback)
-            const wrapped = JSON.parse(text);
-            json = JSON.parse(wrapped.contents);
-          }
-
-          if (symbol.endsWith(".TW")) {
-            if (json.msgArray && json.msgArray[0]) {
-              const msg = json.msgArray[0];
-              const rawZ = msg.z;
-              const rawY = msg.y;
-              const rawB = msg.b?.split('_')[0];
-              const rawA = msg.a?.split('_')[0];
-              const finalPriceStr = (rawZ && rawZ !== "-") ? rawZ : (rawB && rawB !== "-") ? rawB : (rawA && rawA !== "-") ? rawA : rawY;
-              const price = parseFloat(finalPriceStr || "0");
-              if (price > 0 && !isNaN(price)) {
-                results.push({ symbol, price });
-                fetched = true;
-                break;
-              }
-            }
-          } else {
-            const price = json.chart?.result?.[0]?.meta?.regularMarketPrice;
-            if (price) {
-              results.push({ symbol, price });
-              fetched = true;
-              break;
-            }
-          }
-        } catch (e) {
-          // Log skip info silently unless it's the last one
-          if (proxy === proxies[proxies.length - 1]) {
-            console.error(`Web Fetch finally failed for ${symbol} after trying all proxies.`);
-          } else {
-            console.log(`Proxy ${proxy} skipped for ${symbol}, trying fallback...`);
-          }
-          continue;
-        }
-      }
-
-      // Special case for TWSE: If TSE fails, try OTC
-      if (!fetched && symbol.endsWith(".TW")) {
-        const code = symbol.replace(".TW", "");
-        const otcUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${code}.tw&json=1&_=${timestamp}`;
-        for (const proxy of proxies) {
-          try {
-            const res = await fetch(`${proxy}${encodeURIComponent(otcUrl)}`);
-            const text = await res.text();
-            let json = JSON.parse(text);
-            if (json.contents) json = JSON.parse(json.contents);
-
-            if (json.msgArray && json.msgArray[0]) {
-              const msg = json.msgArray[0];
-              const finalPriceStr = (msg.z && msg.z !== "-") ? msg.z : (msg.b?.split('_')[0] !== "-") ? msg.b?.split('_')[0] : msg.y;
-              const price = parseFloat(finalPriceStr || "0");
-              if (price > 0 && !isNaN(price)) {
-                results.push({ symbol, price });
-                break;
-              }
-            }
-          } catch (e) { continue; }
-        }
-      }
-    }
-    return results;
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setSyncStatus("Refreshing prices...");
-
-    try {
-      const allAssets = await db.assets.toArray();
-      const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
-      let prices: { symbol: string, price: number }[] = [];
-
-      if (!(window as any).__TAURI_INTERNALS__) {
-        await fetchExchangeRate();
-        if (uniqueSymbols.length > 0) {
-          prices = await fetchPricesWeb(uniqueSymbols);
-        }
-      } else {
-        const { invoke } = await import("@tauri-apps/api/core");
-        await fetchExchangeRate();
-        if (uniqueSymbols.length > 0) {
-          prices = await invoke("fetch_prices", { symbols: uniqueSymbols });
-        }
-      }
-
-      if (uniqueSymbols.length > 0) {
-        if (prices.length === 0) {
-          setSyncStatus("No prices returned from API");
-        } else {
-          let updatedCount = 0;
-          const priceMap = new Map(prices.map(p => [p.symbol.trim(), p.price]));
-
-          for (const asset of allAssets) {
-            const trimmedSymbol = asset.symbol.trim();
-            const newPrice = priceMap.get(trimmedSymbol);
-            if (newPrice !== undefined && asset.id) {
-              console.log(`Updating DB for ${trimmedSymbol}: ${newPrice}`);
-              await db.assets.update(asset.id, {
-                currentPrice: newPrice,
-                lastUpdated: Date.now()
-              });
-              updatedCount++;
-            }
-          }
-          setSyncStatus(`Updated ${updatedCount} prices`);
-        }
-      } else {
-        setSyncStatus("No assets to refresh");
-      }
-    } catch (e) {
-      console.error("Price refresh failed:", e);
-      setSyncStatus("Refresh failed. Check console.");
-
-      // Fallback: Seed data if empty and error occurs (only if count is 0)
-      const count = await db.assets.count();
-      if (count === 0) {
-        await db.assets.bulkAdd([
-          { recordId: crypto.randomUUID(), name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
-          { recordId: crypto.randomUUID(), name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
-          { recordId: crypto.randomUUID(), name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
-        ]);
-      }
-    } finally {
-      setIsRefreshing(false);
-      setTimeout(() => setSyncStatus(""), 3000);
-    }
-  };
-
-  // Chart data calculation
   const marketData = assets ? [
     { name: 'TW Stocks', value: assets.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) },
-    { name: 'US Stocks', value: assets.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) },
-    { name: 'Crypto', value: assets.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) },
+    { name: 'US Stocks', value: assets.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) * exchangeRate },
+    { name: 'Crypto', value: assets.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) * exchangeRate },
   ].filter(d => d.value > 0) : [];
 
   const COLORS = ["#3b82f6", "#6366f1", "#10b981", "#8b5cf6"];
@@ -662,11 +526,9 @@ function App() {
       <AddAssetModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onAssetAdded={() => {
-          console.log("Asset added, triggering immediate refresh...");
-          handleRefresh();
-        }}
+        onAssetAdded={() => handleRefresh()}
       />
+
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">
         <div className={`tab-item ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>
