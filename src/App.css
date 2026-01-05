@@ -1041,19 +1041,57 @@ input:focus {
 }
 
 /* Stats View & Chart */
-.view-title {
+color: #fff;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
   margin-bottom: 24px;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 800;
-  font-size: 1.5rem;
+}
+
+.stats-header .view-title {
+  margin-bottom: 0;
+}
+
+.stats-toggle {
+  display: flex;
+  background: #000;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toggle-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: var(--primary);
   color: #fff;
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .chart-container {
-  padding: 30px;
+  padding: 40px 24px 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-height: 500px;
+}
+
+.stats-view {
+  padding-bottom: 140px;
 }
 
 .chart-wrapper {
@@ -1067,8 +1105,8 @@ input:focus {
 
 .chart-center-label {
   position: absolute;
-  top: 40%;
-  /* Matches Recharts CX/CY balanced with Legend */
+  top: 150px;
+  /* Matches Recharts height (300px) / 2 */
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
@@ -1097,16 +1135,65 @@ input:focus {
 .recharts-legend-item-text {
   color: #fff !important;
   font-weight: 600 !important;
-  font-size: 0.9rem !important;
+  font-size: 0.8rem !important;
   margin-left: 8px;
 }
 
-.recharts-tooltip-cursor {
-  fill: rgba(255, 255, 255, 0.05) !important;
+/* Custom Legend Styles */
+.custom-legend-container {
+  width: 100%;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
-.recharts-default-legend {
-  margin-top: 20px !important;
+.custom-legend-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-legend-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.custom-legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.legend-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legend-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.legend-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.legend-percent {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
 }
 
 /* Search Suggestions */

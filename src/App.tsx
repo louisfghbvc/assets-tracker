@@ -44,6 +44,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
+  const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
 
   const assets = useLiveQuery(() => db.assets.toArray());
 
@@ -296,7 +297,18 @@ function App() {
     { name: 'Crypto', value: assets.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) * exchangeRate },
   ].filter(d => d.value > 0) : [];
 
-  const COLORS = ["#3b82f6", "#6366f1", "#10b981", "#8b5cf6"];
+  const assetData = useMemo(() => {
+    if (!mergedAssets) return [];
+    return mergedAssets
+      .map(asset => ({
+        name: asset.symbol,
+        value: asset.market === 'TW' ? asset.totalValue : asset.totalValue * exchangeRate
+      }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [mergedAssets, exchangeRate]);
+
+  const COLORS = ["#3b82f6", "#6366f1", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#84cc16", "#06b6d4"];
 
   return (
     <div className="app-container">
@@ -522,13 +534,30 @@ function App() {
       {activeTab === 'stats' && (
         <section className="stats-view animate-fade-in">
           <div className="card chart-container">
-            <h2 className="view-title">Portfolio Allocation</h2>
-            {marketData.length > 0 ? (
+            <div className="stats-header">
+              <h2 className="view-title">Allocation</h2>
+              <div className="stats-toggle">
+                <button
+                  className={`toggle-btn ${statsView === 'market' ? 'active' : ''}`}
+                  onClick={() => setStatsView('market')}
+                >
+                  By Market
+                </button>
+                <button
+                  className={`toggle-btn ${statsView === 'asset' ? 'active' : ''}`}
+                  onClick={() => setStatsView('asset')}
+                >
+                  By Asset
+                </button>
+              </div>
+            </div>
+
+            {(statsView === 'market' ? marketData.length : assetData.length) > 0 ? (
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={300}>
                   <RePieChart>
                     <Pie
-                      data={marketData}
+                      data={statsView === 'market' ? marketData : assetData}
                       cx="50%"
                       cy="50%"
                       innerRadius={80}
@@ -537,7 +566,7 @@ function App() {
                       dataKey="value"
                       stroke="none"
                     >
-                      {marketData.map((_entry, index) => (
+                      {(statsView === 'market' ? marketData : assetData).map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -551,12 +580,27 @@ function App() {
                       itemStyle={{ color: '#fff' }}
                       formatter={(value: any) => value !== undefined ? `$${Number(value).toLocaleString()}` : ''}
                     />
-                    <Legend verticalAlign="bottom" height={36} />
                   </RePieChart>
                 </ResponsiveContainer>
                 <div className="chart-center-label">
                   <p className="label">Total</p>
                   <p className="amount">${(totalBalance / 1000).toFixed(1)}k</p>
+                </div>
+
+                <div className="custom-legend-container">
+                  {(statsView === 'market' ? marketData : assetData).map((entry, index) => {
+                    const total = (statsView === 'market' ? marketData : assetData).reduce((s, i) => s + i.value, 0);
+                    const percent = total > 0 ? (entry.value / total * 100).toFixed(1) : '0.0';
+                    return (
+                      <div key={entry.name} className="custom-legend-item">
+                        <div className="legend-info">
+                          <span className="legend-color-dot" style={{ background: COLORS[index % COLORS.length] }}></span>
+                          <span className="legend-text">{entry.name}</span>
+                        </div>
+                        <span className="legend-percent">{percent}%</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
