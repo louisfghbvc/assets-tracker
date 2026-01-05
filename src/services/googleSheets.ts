@@ -89,14 +89,19 @@ export const googleSheetsService = {
         // 2. Search Drive for existing "AssetsTracker_DB"
         try {
             const query = encodeURIComponent("name = 'AssetsTracker_DB' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
-            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime)`, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
             const searchData = await searchRes.json();
 
             if (searchData.files && searchData.files.length > 0) {
-                spreadsheetId = searchData.files[0].id;
-                console.log("Found existing spreadsheet on Drive:", spreadsheetId);
+                // Sort by modifiedTime (newest first) to find the active one
+                const sortedFiles = searchData.files.sort((a: any, b: any) =>
+                    new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime()
+                );
+
+                spreadsheetId = sortedFiles[0].id;
+                console.log("Found existing spreadsheet(s). Using most recent:", spreadsheetId);
                 localStorage.setItem('google_spreadsheet_id', spreadsheetId!);
                 return spreadsheetId;
             }

@@ -7,12 +7,12 @@ import {
   Plus,
   ChevronRight,
   ArrowUpRight,
-  GanttChartSquare,
   LogIn,
   LogOut,
   CloudUpload,
   CloudDownload,
-  Trash2
+  Trash2,
+  GanttChartSquare
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -44,6 +44,38 @@ function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
   const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
+  const [userProfile, setUserProfile] = useState<{ name: string, email: string, picture: string } | null>(null);
+
+  // Initialize from local storage
+  useEffect(() => {
+    const storedToken = localStorage.getItem("google_access_token");
+    const storedProfile = localStorage.getItem("user_profile");
+
+    if (storedToken) {
+      setAccessToken(storedToken);
+      if (storedProfile) {
+        setUserProfile(JSON.parse(storedProfile));
+      } else {
+        fetchUserProfile(storedToken);
+      }
+    }
+  }, []);
+
+  const fetchUserProfile = async (token: string) => {
+    try {
+      const res = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const profile = { name: data.name, email: data.email, picture: data.picture };
+        setUserProfile(profile);
+        localStorage.setItem('user_profile', JSON.stringify(profile));
+      }
+    } catch (e) {
+      console.error("Failed to fetch user profile", e);
+    }
+  };
 
   const assets = useLiveQuery(() => db.assets.toArray());
 
@@ -161,11 +193,17 @@ function App() {
   };
 
   const login = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
+    onSuccess: async (tokenResponse) => {
       setAccessToken(tokenResponse.access_token);
       localStorage.setItem("google_access_token", tokenResponse.access_token);
+
+      // Fetch User Profile immediately after login
+      await fetchUserProfile(tokenResponse.access_token);
+
+      // Auto-sync
+      setTimeout(() => performDownload(tokenResponse.access_token), 500);
     },
-    scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
+    scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
   });
 
   const handleCloudUpload = () => {
@@ -176,9 +214,12 @@ function App() {
     performUpload();
   };
 
-  const performUpload = async () => {
+  const performUpload = async (tokenOverride?: string) => {
+    const token = tokenOverride || accessToken;
+    if (!token) return;
+
     setSyncStatus("Backing up to cloud...");
-    const result = await syncService.upload(accessToken!);
+    const result = await syncService.upload(token);
     if (result.success) {
       setSyncStatus(`Backup successful! (${result.count} assets)`);
     } else {
@@ -202,9 +243,12 @@ function App() {
     }
   };
 
-  const performDownload = async () => {
+  const performDownload = async (tokenOverride?: string) => {
+    const token = tokenOverride || accessToken;
+    if (!token) return;
+
     setSyncStatus("Restoring from cloud...");
-    const result = await syncService.download(accessToken!);
+    const result = await syncService.download(token);
     if (result.success) {
       setSyncStatus(`Restore successful! (${result.count} assets)`);
       await handleRefresh();
@@ -221,7 +265,10 @@ function App() {
 
   const handleLogout = () => {
     setAccessToken(null);
+    setUserProfile(null);
     localStorage.removeItem("google_access_token");
+    localStorage.removeItem("user_profile");
+    // Removed: localStorage.removeItem("google_spreadsheet_id");
   };
 
   const handleRefresh = async () => {
@@ -309,6 +356,37 @@ function App() {
 
   const COLORS = ["#3b82f6", "#6366f1", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#84cc16", "#06b6d4"];
 
+  // ---------------------------------------------------------
+  // RENDER CONDITIONAL: LOGIN SCREEN vs APP
+  // ---------------------------------------------------------
+
+  if (!accessToken) {
+    return (
+      <div className="login-container">
+        <div className="login-card animate-fade-in">
+          <div className="login-header">
+            <div className="login-icon">
+              <Wallet size={48} color="#3b82f6" />
+            </div>
+            <h1>AssetTracker</h1>
+            <p>Your premium financial companion</p>
+          </div>
+          <button className="login-btn-large" onClick={() => login()}>
+            <div className="google-icon-wrapper">
+              <svg className="google-icon" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+              </svg>
+            </div>
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Header */}
@@ -334,9 +412,9 @@ function App() {
             <button className="action-btn" onClick={handleRefresh} data-hint="重新整理市價">
               <RefreshCw size={24} className={isRefreshing ? "spin" : ""} />
             </button>
-            {accessToken ? (
-              <button
-                className={`action-btn ${isLoggingOut ? 'confirm-mode' : ''}`}
+            {userProfile ? (
+              <div
+                className={`user-profile-badge ${isLoggingOut ? 'confirm-mode' : ''}`}
                 onClick={() => {
                   if (isLoggingOut) {
                     handleLogout();
@@ -348,15 +426,13 @@ function App() {
                 }}
                 data-hint={isLoggingOut ? "Confirm Logout?" : "Logout Account"}
               >
-                {isLoggingOut ? (
-                  <span className="confirm-text-small">Confirm?</span>
-                ) : (
-                  <LogOut size={24} />
-                )}
-              </button>
+                <img src={userProfile.picture} alt={userProfile.name} className="user-avatar" referrerPolicy="no-referrer" />
+                <span className="user-name-text">{isLoggingOut ? "Logout?" : userProfile.name}</span>
+              </div>
             ) : (
-              <button className="action-btn" onClick={() => login()} data-hint="使用 Google 登入">
-                <LogIn size={24} />
+              /* Fallback if userProfile missing but token exists */
+              <button className="action-btn" onClick={handleLogout}>
+                <LogOut size={24} />
               </button>
             )}
           </div>
