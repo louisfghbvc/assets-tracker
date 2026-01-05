@@ -228,10 +228,11 @@ function App() {
       let fetched = false;
       console.log(`Web Fetching: ${symbol}`);
       const timestamp = Date.now();
-      const yahooSymbol = symbol === 'BTC' ? 'BTC-USD' : symbol === 'ETH' ? 'ETH-USD' : symbol === 'SOL' ? 'SOL-USD' : symbol;
+      const sanitizedSymbol = symbol.trim().split(/\s+/)[0]; // Extra layer of safety
+      const yahooSymbol = sanitizedSymbol === 'BTC' ? 'BTC-USD' : sanitizedSymbol === 'ETH' ? 'ETH-USD' : sanitizedSymbol === 'SOL' ? 'SOL-USD' : sanitizedSymbol;
 
-      const targetUrl = symbol.endsWith(".TW")
-        ? `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol.replace(".TW", "")}.tw&json=1&_=${timestamp}`
+      const targetUrl = sanitizedSymbol.endsWith(".TW")
+        ? `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${sanitizedSymbol.replace(".TW", "")}.tw&json=1&_=${timestamp}`
         : `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d&_=${timestamp}`;
 
       for (const proxy of proxies) {

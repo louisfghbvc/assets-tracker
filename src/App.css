@@ -1047,3 +1047,70 @@ input:focus {
 .recharts-default-legend {
   margin-top: 20px !important;
 }
+/* Search Suggestions */
+.suggestions-container {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #11100f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  overflow: hidden;
+  z-index: 100;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background: rgba(var(--primary-rgb), 0.1);
+}
+
+.suggestion-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suggestion-symbol {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.suggestion-name {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.suggestion-type {
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.searching-indicator {
+  padding: 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

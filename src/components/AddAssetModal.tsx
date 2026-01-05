@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Plus, Loader2 } from 'lucide-react';
 import { db } from '../db/database';
+import { searchService, SearchResult } from '../services/search';
 
 interface AddAssetModalProps {
     isOpen: boolean;
@@ -15,12 +16,53 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
     const [quantity, setQuantity] = useState('');
     const [cost, setCost] = useState('');
 
+    // Search states
+    const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSymbol('');
+            setName('');
+            setQuantity('');
+            setCost('');
+            setSuggestions([]);
+            setShowSuggestions(false);
+        }
+    }, [isOpen]);
+
+    const performSearch = useCallback(async (query: string, currentMarket: 'TW' | 'US' | 'Crypto') => {
+        if (query.length < 2) {
+            setSuggestions([]);
+            return;
+        }
+
+        setIsSearching(true);
+        const results = await searchService.search(query, currentMarket);
+        setSuggestions(results);
+        setIsSearching(false);
+        setShowSuggestions(results.length > 0);
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (symbol && !name) { // Only search if symbol is typed but name isn't manually set yet
+                performSearch(symbol, market);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [symbol, market, performSearch, name]);
+
     if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        let finalSymbol = symbol.trim().toUpperCase();
+        // Sanitize: Take only the first "word" in case the name got mixed in (e.g. from a bad parse)
+        let finalSymbol = symbol.trim().split(/\s+/)[0].toUpperCase();
+
         if (market === 'TW' && !finalSymbol.includes('.')) {
             finalSymbol = `${finalSymbol}.TW`;
         }
@@ -40,17 +82,19 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
         // Trigger refresh in parent
         if (onAssetAdded) onAssetAdded();
 
-        // Reset and close
-        setSymbol('');
-        setName('');
-        setQuantity('');
-        setCost('');
         onClose();
     };
 
+    const handleSelectSuggestion = (s: SearchResult) => {
+        setSymbol(s.symbol);
+        setName(s.name);
+        setMarket(s.market);
+        setShowSuggestions(false);
+    };
+
     return (
-        <div className="modal-overlay animate-fade-in">
-            <div className="modal-content">
+        <div className="modal-overlay animate-fade-in" onClick={() => setShowSuggestions(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h3>Add New Asset</h3>
                     <button className="close-btn" onClick={onClose}><X size={28} /></button>
@@ -65,7 +109,10 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                                     key={m}
                                     type="button"
                                     className={`market-btn ${market === m ? 'active' : ''}`}
-                                    onClick={() => setMarket(m)}
+                                    onClick={() => {
+                                        setMarket(m);
+                                        setSuggestions([]);
+                                    }}
                                 >
                                     {m}
                                 </button>
@@ -73,28 +120,58 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                         </div>
                     </div>
 
-                    <div className="form-group">
+                    <div className="form-group" style={{ position: 'relative' }}>
                         <label>
-                            {market === 'TW' ? 'Stock Code (e.g., 2330)' :
-                                market === 'US' ? 'Symbol (e.g., AAPL)' :
-                                    'Crypto Symbol (e.g., BTC)'}
+                            {market === 'TW' ? 'Stock Code / Name (e.g., 台積電)' :
+                                market === 'US' ? 'Symbol / Name (e.g., AAPL)' :
+                                    'Crypto Symbol / Name (e.g., BTC)'}
                         </label>
-                        <input
-                            type="text"
-                            value={symbol}
-                            onChange={(e) => setSymbol(e.target.value)}
-                            placeholder={market === 'TW' ? "Enter number..." : "Enter symbol..."}
-                            required
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="text"
+                                value={symbol}
+                                onChange={(e) => {
+                                    setSymbol(e.target.value);
+                                    if (name) setName(''); // Clear name if user starts re-typing symbol
+                                }}
+                                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                                placeholder={market === 'TW' ? "Enter number or name..." : "Enter symbol or name..."}
+                                required
+                                autoComplete="off"
+                            />
+                            {isSearching && (
+                                <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }}>
+                                    <Loader2 size={20} className="spin" />
+                                </div>
+                            )}
+                        </div>
+
+                        {showSuggestions && (
+                            <div className="suggestions-container">
+                                {suggestions.map((s, idx) => (
+                                    <div
+                                        key={`${s.symbol}-${idx}`}
+                                        className="suggestion-item"
+                                        onClick={() => handleSelectSuggestion(s)}
+                                    >
+                                        <div className="suggestion-main">
+                                            <span className="suggestion-symbol">{s.symbol}</span>
+                                            <span className="suggestion-name">{s.name}</span>
+                                        </div>
+                                        <div className="suggestion-type">{s.market} {s.type}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="form-group">
-                        <label>Name</label>
+                        <label>Display Name</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Optional (Auto-fetch)..."
+                            placeholder="Optional (Auto-filled from search)..."
                         />
                     </div>
 
