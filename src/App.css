@@ -248,6 +248,12 @@ body {
   background: var(--surface-hover);
 }
 
+.stat-card.active {
+  border-color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.1);
+  box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.2);
+}
+
 .stat-icon {
   width: 40px;
   height: 40px;
@@ -285,6 +291,35 @@ body {
   font-weight: 800;
   font-size: 1.4rem;
   color: #fff;
+}
+
+.stat-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-card-pct {
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.stat-card-pct.positive {
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.stat-card-pct.negative {
+  color: var(--accent);
+  background: rgba(244, 63, 94, 0.1);
 }
 
 /* Assets List */
@@ -599,6 +634,32 @@ body {
   font-size: 1.25rem;
   color: #fff;
   margin: 0;
+  line-height: 1;
+}
+
+.asset-value-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.asset-profit-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+}
+
+.asset-profit-badge.positive {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.asset-profit-badge.negative {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--accent);
 }
 
 .market-per-unit {
@@ -1047,6 +1108,7 @@ input:focus {
 .recharts-default-legend {
   margin-top: 20px !important;
 }
+
 /* Search Suggestions */
 .suggestions-container {
   position: absolute;

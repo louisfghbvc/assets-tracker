@@ -43,6 +43,7 @@ function App() {
 
   const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [marketFilter, setMarketFilter] = useState<string | null>(null);
 
   const assets = useLiveQuery(() => db.assets.toArray());
 
@@ -81,10 +82,47 @@ function App() {
       }
     });
 
-    return Object.values(groups).map(group => ({
-      ...group,
-      cost: group.quantity > 0 ? group.totalCostBasis / group.quantity : 0,
-    }));
+    return Object.values(groups).map(group => {
+      const totalValue = group.quantity * group.currentPrice;
+      const profit = totalValue - group.totalCostBasis;
+      const profitPercent = group.totalCostBasis !== 0 ? (profit / group.totalCostBasis) * 100 : 0;
+
+      return {
+        ...group,
+        cost: group.quantity > 0 ? group.totalCostBasis / group.quantity : 0,
+        totalValue,
+        profit,
+        profitPercent
+      };
+    });
+  }, [assets]);
+
+  const marketStats = useMemo(() => {
+    const stats: Record<string, { totalValue: number, totalCost: number }> = {
+      'TW': { totalValue: 0, totalCost: 0 },
+      'US': { totalValue: 0, totalCost: 0 },
+      'Crypto': { totalValue: 0, totalCost: 0 }
+    };
+
+    assets?.forEach(asset => {
+      const market = asset.market;
+      if (stats[market]) {
+        const itemValue = (asset.currentPrice || 0) * asset.quantity;
+        const itemCost = asset.cost * asset.quantity;
+        stats[market].totalValue += itemValue;
+        stats[market].totalCost += itemCost;
+      }
+    });
+
+    return Object.entries(stats).map(([market, val]) => {
+      const profit = val.totalValue - val.totalCost;
+      const profitPercent = val.totalCost !== 0 ? (profit / val.totalCost) * 100 : 0;
+      return {
+        market,
+        totalValue: val.totalValue,
+        profitPercent
+      };
+    });
   }, [assets]);
 
   const fetchExchangeRate = async () => {
@@ -332,33 +370,27 @@ function App() {
         <>
           {/* Quick Stats */}
           <section className="stats-grid animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <div className="stat-card">
-              <div className="stat-icon tw"><ArrowUpRight size={20} /></div>
-              <div>
-                <p className="stat-card-label">TW Stocks</p>
-                <p className="stat-card-value">
-                  ${((assets?.filter(a => a.market === 'TW').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) / 1000).toFixed(1)}k
-                </p>
+            {marketStats.map((stat) => (
+              <div
+                key={stat.market}
+                className={`stat-card ${marketFilter === stat.market ? 'active' : ''}`}
+                onClick={() => setMarketFilter(prev => prev === stat.market ? null : stat.market)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className={`stat-icon ${stat.market.toLowerCase()}`}><ArrowUpRight size={20} /></div>
+                <div className="stat-card-content">
+                  <div className="stat-card-header">
+                    <p className="stat-card-label">{stat.market} Stocks</p>
+                    <span className={`stat-card-pct ${stat.profitPercent >= 0 ? 'positive' : 'negative'}`}>
+                      {stat.profitPercent >= 0 ? '+' : ''}{stat.profitPercent.toFixed(1)}%
+                    </span>
+                  </div>
+                  <p className="stat-card-value">
+                    ${(stat.totalValue / (stat.market === 'TW' ? 1000 : 1)).toFixed(1)}{stat.market === 'TW' ? 'k' : ''}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon us"><ArrowUpRight size={20} /></div>
-              <div>
-                <p className="stat-card-label">US Stocks</p>
-                <p className="stat-card-value">
-                  ${((assets?.filter(a => a.market === 'US').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) * exchangeRate / 1000).toFixed(1)}k
-                </p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon crypto"><ArrowUpRight size={20} /></div>
-              <div>
-                <p className="stat-card-label">Crypto</p>
-                <p className="stat-card-value">
-                  ${((assets?.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) || 0) * exchangeRate / 1000).toFixed(1)}k
-                </p>
-              </div>
-            </div>
+            ))}
           </section>
 
           {/* Assets List */}
@@ -371,7 +403,7 @@ function App() {
             </div>
 
             <div className="assets-list">
-              {mergedAssets?.map((asset) => (
+              {mergedAssets?.filter(a => !marketFilter || a.market === marketFilter).map((asset) => (
                 <div
                   key={asset.symbol}
                   className={`asset-item ${expandedSymbol === asset.symbol ? 'expanded' : ''}`}
@@ -386,10 +418,15 @@ function App() {
                       <p className="asset-symbol">{asset.symbol}</p>
                     </div>
                     <div className="asset-market">
-                      <p className="asset-price">
-                        ${((asset.currentPrice || 0) * asset.quantity).toLocaleString()}
-                        <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
-                      </p>
+                      <div className="asset-value-group">
+                        <p className="asset-price">
+                          ${asset.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
+                        </p>
+                        <span className={`asset-profit-badge ${asset.profitPercent >= 0 ? 'positive' : 'negative'}`}>
+                          {asset.profitPercent >= 0 ? '+' : ''}{asset.profitPercent.toFixed(1)}%
+                        </span>
+                      </div>
                       <p className="market-per-unit">
                         ${(asset.currentPrice || 0).toLocaleString()} / unit
                       </p>
