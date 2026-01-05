@@ -365,9 +365,9 @@ function App() {
       const count = await db.assets.count();
       if (count === 0) {
         await db.assets.bulkAdd([
-          { name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
-          { name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
-          { name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
+          { recordId: crypto.randomUUID(), name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
+          { recordId: crypto.randomUUID(), name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
+          { recordId: crypto.randomUUID(), name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
         ]);
       }
     } finally {
@@ -431,7 +431,7 @@ function App() {
                 )}
               </button>
             ) : (
-              <button className="action-btn" onClick={login} data-hint="使用 Google 登入">
+              <button className="action-btn" onClick={() => login()} data-hint="使用 Google 登入">
                 <LogIn size={24} />
               </button>
             )}
@@ -637,7 +637,7 @@ function App() {
                         color: '#fff'
                       }}
                       itemStyle={{ color: '#fff' }}
-                      formatter={(value: number) => `$${value.toLocaleString()}`}
+                      formatter={(value: any) => value !== undefined ? `$${Number(value).toLocaleString()}` : ''}
                     />
                     <Legend verticalAlign="bottom" height={36} />
                   </RePieChart>

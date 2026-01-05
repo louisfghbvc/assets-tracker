@@ -8,10 +8,28 @@
 
 ## 🎯 關鍵功能 (Key Features)
 
-* **全方位資產概覽**：整合台股、美股、加密貨幣的持倉。
-* **跨平台支援**：一次開發，支援 Windows, macOS, Linux, Android, iOS 與 Web (PWA)。
-* **即時效能優化**：針對行動裝置優化的毛玻璃質感介面，流暢度極佳。
-* **PWA 安裝**：無需透過 App Store，直接從瀏覽器「加入主畫面」即可使用。
+*   **全方位資產概覽**：整合台股、美股、加密貨幣的持倉。
+*   **跨平台支援**：一次開發，支援 Windows, macOS, Linux, Android, iOS 與 Web (PWA)。
+*   **雲端同步備份**：整合 Google Sheets，支援手動「備份至雲端」與「從雲端還原」，實現跨平台資料同步。
+*   **App-as-Source-of-Truth**：採用手動同步策略，確保使用者對資料狀態有完全的掌控，避免自動同步導致的資料衝突。
+*   **即時效能優化**：針對行動裝置優化的毛玻璃質感介面，流暢度極佳。
+*   **PWA 安裝**：無需透過 App Store，直接從瀏覽器「加入主畫面」即可使用。
+
+## ☁️ 雲端同步設定 (Cloud Sync Setup)
+
+本專案使用 Google Sheets 作為雲端資料庫。
+
+### 1. 取得 Google Client ID
+1.  前往 [Google Cloud Console](https://console.cloud.google.com/)。
+2.  建立新專案並啟用 **Google Sheets API** 與 **Google Drive API**。
+3.  在「憑證」頁面建立 **OAuth 2.0 用戶端 ID**（應用程式類型選擇「Web 應用程式」）。
+4.  設定「已授權的重新導向 URI」（例如：`http://localhost:5173` 用於本地開發，或您的部署網址）。
+
+### 2. 設定環境變數
+在專案根目錄建立 `.env` 檔案並填入：
+```env
+VITE_GOOGLE_CLIENT_ID=您的_CLIENT_ID
+```
 
 ## 📱 行動裝置安裝 (Mobile Installation)
 
@@ -29,10 +47,12 @@
 
 ## 🛠 技術架構 (Architecture)
 
-* **核心框架**: [Tauri v2](https://v2.tauri.app/)
-* **前端**: React + TypeScript + Vite + Vanilla CSS
-* **PWA 支援**: `vite-plugin-pwa`
-* **UI 組件**: Lucide React
+*   **核心框架**: [Tauri v2](https://v2.tauri.app/)
+*   **前端**: React + TypeScript + Vite + Vanilla CSS
+*   **本地資料庫**: [Dexie.js](https://dexie.org/) (IndexedDB wrapper)
+*   **雲端同步**: Google Sheets API v4 + Google Drive API v3
+*   **PWA 支援**: `vite-plugin-pwa`
+*   **UI 組件**: Lucide React + Recharts
 
 ## 🚀 開發與建置 (Development)
 
@@ -67,7 +87,11 @@ npx vite preview --host
 ```text
 assets-tracker/
 ├── src/                # 前端程式碼 (React + TS)
+│   ├── components/     # UI 元件
+│   ├── services/       # 同步與資料處理服務
+│   ├── db/             # Dexie 資料庫定義
+│   └── ...
 ├── src-tauri/          # 後端程式碼 (Rust/Mobile Config)
-├── public/             # 靜態資源 (包含 App 圖示)
+├── public/             # 靜態資源
 └── index.html          # 入口檔案
 ```
