@@ -125,10 +125,6 @@ function App() {
   const handleDeleteAsset = async (id: number) => {
     console.log("handleDeleteAsset executing for ID:", id);
     try {
-      const asset = await db.assets.get(id);
-      if (asset?.recordId) {
-        await db.deletedAssets.add({ recordId: asset.recordId });
-      }
       await db.assets.delete(id);
       setSyncStatus("Record deleted");
       setTimeout(() => setSyncStatus(""), 2000);
@@ -142,9 +138,6 @@ function App() {
     try {
       const assetsToDelete = await db.assets.where("symbol").equals(symbol).toArray();
       for (const asset of assetsToDelete) {
-        if (asset.recordId) {
-          await db.deletedAssets.add({ recordId: asset.recordId });
-        }
         if (asset.id) await db.assets.delete(asset.id);
       }
       console.log(`Position for ${symbol} cleared from DB`);

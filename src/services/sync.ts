@@ -7,7 +7,16 @@ export const syncService = {
             const spreadsheetId = await googleSheetsService.findOrCreateSpreadsheet(accessToken);
             if (!spreadsheetId) throw new Error("Could not find or create spreadsheet");
 
-            const localAssets = await db.assets.toArray();
+            let localAssets = await db.assets.toArray();
+
+            // Patch missing recordIds for legacy data
+            for (const asset of localAssets) {
+                if (!asset.recordId && asset.id) {
+                    const newId = `${Date.now()}-${asset.symbol}-${Math.random().toString(36).substr(2, 9)}`;
+                    await db.assets.update(asset.id, { recordId: newId });
+                    asset.recordId = newId;
+                }
+            }
 
             // Overwrite cloud with local data
             await googleSheetsService.clearSheet(accessToken, spreadsheetId);

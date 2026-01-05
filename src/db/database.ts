@@ -20,21 +20,14 @@ export interface SyncLog {
     message?: string;
 }
 
-export interface DeletedAsset {
-    id?: number;
-    recordId: string;
-}
-
 export class AssetTrackerDatabase extends Dexie {
     assets!: Table<Asset>;
-    deletedAssets!: Table<DeletedAsset>;
     syncLogs!: Table<SyncLog>;
 
     constructor() {
         super('AssetTrackerDB');
         this.version(2).stores({
             assets: '++id, recordId, symbol, type, market, lastUpdated',
-            deletedAssets: '++id, recordId',
             syncLogs: '++id, lastSyncTime'
         });
     }
