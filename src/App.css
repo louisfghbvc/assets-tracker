@@ -29,6 +29,12 @@ body {
   }
 }
 
+@media (max-width: 400px) {
+  .app-container {
+    padding: 16px 12px 140px;
+  }
+}
+
 /* Background Decoration */
 .app-container::before {
   content: '';
@@ -96,6 +102,29 @@ body {
   .logo-group {
     font-size: 1.2rem;
     gap: 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  .header {
+    margin-bottom: 24px;
+    gap: 24px;
+  }
+
+  .logo-group {
+    font-size: 1.1rem;
+    gap: 6px;
+  }
+
+  .icon-bg {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .icon-bg svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -240,6 +269,30 @@ body {
   }
 }
 
+@media (max-width: 400px) {
+  .balance-amount {
+    font-size: 2.2rem;
+  }
+
+  .balance-label {
+    font-size: 0.75rem;
+  }
+
+  .balance-stat {
+    margin-top: 12px;
+    gap: 8px;
+  }
+
+  .stat-value {
+    font-size: 0.9rem;
+    padding: 4px 10px;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+  }
+}
+
 .balance-stat {
   display: flex;
   align-items: center;
@@ -285,6 +338,13 @@ body {
   }
 }
 
+@media (max-width: 400px) {
+  .stats-grid {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+}
+
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--glass-border);
@@ -301,6 +361,18 @@ body {
     padding: 12px;
     gap: 8px;
     border-radius: 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  .stat-card {
+    padding: 10px 8px;
+    gap: 6px;
+    border-radius: 14px;
+  }
+
+  .stat-card-value {
+    font-size: 0.9rem;
   }
 }
 
@@ -368,6 +440,27 @@ body {
   .stat-icon svg {
     width: 18px;
     height: 18px;
+  }
+}
+
+@media (max-width: 400px) {
+  .stat-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .stat-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .stat-card-label {
+    font-size: 0.7rem;
+  }
+
+  .stat-card-pct {
+    font-size: 0.65rem;
+    padding: 1px 4px;
   }
 }
 
@@ -540,6 +633,50 @@ body {
 
   .asset-name {
     font-size: 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .asset-summary {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .asset-icon {
+    min-width: 38px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .asset-info {
+    max-width: 40%;
+  }
+
+  .asset-name {
+    font-size: 0.9rem;
+  }
+
+  .asset-symbol {
+    font-size: 0.75rem;
+  }
+
+  .asset-price {
+    font-size: 1.1rem;
+  }
+
+  .market-per-unit {
+    font-size: 0.65rem;
+  }
+
+  .asset-actions {
+    gap: 8px;
+    margin-left: 8px;
+  }
+
+  .delete-item-btn {
+    width: 40px;
+    height: 40px;
   }
 }
 
@@ -983,6 +1120,30 @@ body {
   }
 }
 
+@media (max-width: 400px) {
+  .modal-content {
+    padding: 24px 16px;
+    width: 92%;
+    border-radius: 20px;
+  }
+
+  .modal-header h3 {
+    font-size: 1.4rem;
+  }
+
+  .close-btn {
+    top: 16px !important;
+    right: 16px !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .close-btn svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
 @keyframes modalPop {
   from {
     transform: scale(0.9) translateY(20px);
@@ -1148,20 +1309,7 @@ input:focus {
   box-shadow: 0 20px 45px rgba(251, 191, 36, 0.45);
 }
 
-/* Responsive adjustments */
-@media (max-width: 400px) {
-  .balance-amount {
-    font-size: 2.4rem;
-  }
 
-  .stats-grid {
-    gap: 8px;
-  }
-
-  .stat-card {
-    padding: 10px;
-  }
-}
 
 /* Stats View & Chart */
 .view-title {
@@ -1528,4 +1676,33 @@ input:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 400px) {
+  .user-profile-badge {
+    padding: 4px;
+    gap: 0;
+    min-height: 40px;
+    border-radius: 50%;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-name-text {
+    display: none;
+  }
+
+  .action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .exchange-rate-badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
 }
