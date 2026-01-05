@@ -28,6 +28,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
 import { priceService } from "./services/price";
 import AddAssetModal from "./components/AddAssetModal";
+import { translations, Language } from "./translations";
 
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -44,6 +45,17 @@ function App() {
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
   const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
   const [userProfile, setUserProfile] = useState<{ name: string, email: string, picture: string } | null>(null);
+  const [language, setLanguage] = useState<Language>((localStorage.getItem("app_language") as Language) || 'zh');
+
+  const t = (key: keyof typeof translations.en) => {
+    return translations[language][key] || translations.en[key] || key;
+  };
+
+  const toggleLanguage = () => {
+    const newLang = language === 'zh' ? 'en' : 'zh';
+    setLanguage(newLang);
+    localStorage.setItem("app_language", newLang);
+  };
 
   // Initialize from local storage
   useEffect(() => {
@@ -367,8 +379,8 @@ function App() {
             <div className="login-icon">
               <Wallet size={48} color="#3b82f6" />
             </div>
-            <h1>AssetTracker</h1>
-            <p>Your premium financial companion</p>
+            <h1>{t('loginTitle')}</h1>
+            <p>{t('loginSubtitle')}</p>
           </div>
           <button className="login-btn-large" onClick={() => login()}>
             <div className="google-icon-wrapper">
@@ -379,7 +391,7 @@ function App() {
                 <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
               </svg>
             </div>
-            <span>Sign in with Google</span>
+            <span>{t('signInWithGoogle')}</span>
           </button>
         </div>
       </div>
@@ -402,13 +414,16 @@ function App() {
               <span className="exchange-rate-badge">USD/TWD: {exchangeRate.toFixed(2)}</span>
             )}
             {syncStatus && <span className="sync-status-msg">{syncStatus}</span>}
-            <button className="action-btn" onClick={handleCloudUpload} data-hint="備份至雲端">
+            <button className="action-btn" onClick={toggleLanguage} data-hint={language === 'zh' ? 'Switch to English' : '切換至中文'}>
+              <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>{language === 'zh' ? 'EN' : '中'}</span>
+            </button>
+            <button className="action-btn" onClick={handleCloudUpload} data-hint={t('backupToCloud')}>
               <CloudUpload size={24} />
             </button>
-            <button className="action-btn" onClick={handleCloudDownload} data-hint="從雲端還原">
+            <button className="action-btn" onClick={handleCloudDownload} data-hint={t('restoreFromCloud')}>
               <CloudDownload size={24} />
             </button>
-            <button className="action-btn" onClick={handleRefresh} data-hint="重新整理市價">
+            <button className="action-btn" onClick={handleRefresh} data-hint={t('refreshPrices')}>
               <RefreshCw size={24} className={isRefreshing ? "spin" : ""} />
             </button>
             {userProfile ? (
@@ -423,10 +438,10 @@ function App() {
                     setTimeout(() => setIsLoggingOut(false), 3000);
                   }
                 }}
-                data-hint={isLoggingOut ? "Confirm Logout?" : "Logout Account"}
+                data-hint={isLoggingOut ? t('confirmLogout') : t('logoutAccount')}
               >
                 <img src={userProfile.picture} alt={userProfile.name} className="user-avatar" referrerPolicy="no-referrer" />
-                <span className="user-name-text">{isLoggingOut ? "Logout?" : userProfile.name}</span>
+                <span className="user-name-text">{isLoggingOut ? t('confirm') : userProfile.name}</span>
               </div>
             ) : (
               /* Fallback if userProfile missing but token exists */
@@ -438,7 +453,7 @@ function App() {
         </div>
 
         <div className="balance-section">
-          <p className="balance-label">Total Balance (NTD)</p>
+          <p className="balance-label">{t('totalBalance')}</p>
           <h1 className="balance-amount">
             ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h1>
@@ -446,7 +461,7 @@ function App() {
             <span className={`stat-value ${Number(balanceChange) >= 0 ? 'positive' : 'negative'}`}>
               {Number(balanceChange) >= 0 ? '+' : ''}${Math.abs(Number(balanceChange)).toLocaleString()} ({balanceChangePercent}%)
             </span>
-            <span className="stat-label">than yesterday</span>
+            <span className="stat-label">{t('thanYesterday')}</span>
           </div>
         </div>
       </header>
@@ -466,7 +481,7 @@ function App() {
                 <div className={`stat-icon ${stat.market.toLowerCase()}`}><ArrowUpRight size={20} /></div>
                 <div className="stat-card-content">
                   <div className="stat-card-header">
-                    <p className="stat-card-label">{stat.market} Stocks</p>
+                    <p className="stat-card-label">{stat.market === 'TW' ? t('twStocks') : stat.market === 'US' ? t('usStocks') : t('crypto')}</p>
                     <span className={`stat-card-pct ${stat.profitPercent >= 0 ? 'positive' : 'negative'}`}>
                       {stat.profitPercent >= 0 ? '+' : ''}{stat.profitPercent.toFixed(1)}%
                     </span>
@@ -482,7 +497,7 @@ function App() {
           {/* Assets List */}
           <section className="assets-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="section-header">
-              <h2>Your Assets</h2>
+              <h2>{t('yourAssets')}</h2>
               <button className="add-btn" onClick={() => setIsModalOpen(true)}>
                 <Plus size={24} />
               </button>
@@ -514,13 +529,13 @@ function App() {
                         </span>
                       </div>
                       <p className="market-per-unit">
-                        ${(asset.currentPrice || 0).toLocaleString()} / unit
+                        ${(asset.currentPrice || 0).toLocaleString()} {t('perUnit')}
                       </p>
                     </div>
                     <div className="asset-actions">
                       <button
                         className={`delete-item-btn ${deletingSymbol === asset.symbol ? 'confirm-mode' : ''}`}
-                        title={deletingSymbol === asset.symbol ? "Confirm Deletion" : "Delete Asset"}
+                        title={deletingSymbol === asset.symbol ? t('confirmDeletion') : t('deleteAsset')}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (deletingSymbol === asset.symbol) {
@@ -534,7 +549,7 @@ function App() {
                         }}
                       >
                         {deletingSymbol === asset.symbol ? (
-                          <span className="confirm-text">Confirm?</span>
+                          <span className="confirm-text">{t('confirm')}</span>
                         ) : (
                           <Trash2 size={22} color="white" />
                         )}
@@ -547,11 +562,11 @@ function App() {
                     <div className="asset-details-expanded animate-slide-down">
                       <div className="position-summary">
                         <div className="summary-stat">
-                          <span className="label">Total Quantity</span>
+                          <span className="label">{t('totalQuantity')}</span>
                           <span className="value">{asset.quantity.toLocaleString()}</span>
                         </div>
                         <div className="summary-stat">
-                          <span className="label">Avg Cost</span>
+                          <span className="label">{t('avgCost')}</span>
                           <span className="value">
                             ${asset.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                           </span>
@@ -559,12 +574,12 @@ function App() {
                       </div>
 
                       <div className="records-list">
-                        <p className="records-header">Individual Records</p>
+                        <p className="records-header">{t('individualRecords')}</p>
                         {asset.items.map((item: any, idx: number) => (
                           <div key={item.id || idx} className="record-item">
                             <div className="record-info">
-                              <span className="record-qty">{item.quantity.toLocaleString()} units</span>
-                              <span className="record-cost"> @ ${item.cost.toLocaleString()}</span>
+                              <span className="record-qty">{item.quantity.toLocaleString()} {t('units')}</span>
+                              <span className="record-cost"> {t('at')} ${item.cost.toLocaleString()}</span>
                             </div>
                             <button
                               className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
@@ -580,10 +595,10 @@ function App() {
                                   }, 3000);
                                 }
                               }}
-                              title={deletingRecordId === item.id ? "Confirm Deletion" : "Delete this record"}
+                              title={deletingRecordId === item.id ? t('confirmDeletion') : t('deleteRecord')}
                             >
                               {deletingRecordId === item.id ? (
-                                <span className="confirm-text-small">Confirm?</span>
+                                <span className="confirm-text-small">{t('confirm')}</span>
                               ) : (
                                 <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>✕</span>
                               )}
@@ -597,7 +612,7 @@ function App() {
               ))}
               {assets?.length === 0 && (
                 <div className="empty-state" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                  <p>No assets found. Click the + button to add one.</p>
+                  <p>{t('noAssets')}</p>
                 </div>
               )}
             </div>
@@ -609,19 +624,19 @@ function App() {
         <section className="stats-view animate-fade-in">
           <div className="card chart-container">
             <div className="stats-header">
-              <h2 className="view-title">Allocation</h2>
+              <h2 className="view-title">{t('allocation')}</h2>
               <div className="stats-toggle">
                 <button
                   className={`toggle-btn ${statsView === 'market' ? 'active' : ''}`}
                   onClick={() => setStatsView('market')}
                 >
-                  By Market
+                  {t('byMarket')}
                 </button>
                 <button
                   className={`toggle-btn ${statsView === 'asset' ? 'active' : ''}`}
                   onClick={() => setStatsView('asset')}
                 >
-                  By Asset
+                  {t('byAsset')}
                 </button>
               </div>
             </div>
@@ -657,7 +672,7 @@ function App() {
                   </RePieChart>
                 </ResponsiveContainer>
                 <div className="chart-center-label">
-                  <p className="label">Total</p>
+                  <p className="label">{t('total')}</p>
                   <p className="amount">${(totalBalance / 1000).toFixed(1)}k</p>
                 </div>
 
@@ -680,7 +695,7 @@ function App() {
             ) : (
               <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                 <PieChart size={64} color="var(--primary)" style={{ marginBottom: '20px', opacity: 0.5 }} />
-                <p style={{ color: 'var(--text-muted)' }}>No data to display. Add some assets first!</p>
+                <p style={{ color: 'var(--text-muted)' }}>{t('noData')}</p>
               </div>
             )}
           </div>
@@ -692,17 +707,18 @@ function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAssetAdded={() => handleRefresh()}
+        t={t}
       />
 
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">
         <div className={`tab-item ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>
           <TrendingUp size={24} />
-          <span>Assets</span>
+          <span>{t('assets')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           <PieChart size={24} />
-          <span>Stats</span>
+          <span>{t('stats')}</span>
         </div>
       </nav>
     </div>

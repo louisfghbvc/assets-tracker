@@ -2,14 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Loader2 } from 'lucide-react';
 import { db } from '../db/database';
 import { searchService, SearchResult } from '../services/search';
+import { translations } from '../translations';
 
 interface AddAssetModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAssetAdded?: () => void;
+    t: (key: keyof typeof translations.en) => string;
 }
 
-const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetAdded }) => {
+const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetAdded, t }) => {
     const [symbol, setSymbol] = useState('');
     const [name, setName] = useState('');
     const [market, setMarket] = useState<'TW' | 'US' | 'Crypto'>('TW');
@@ -96,13 +98,13 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
         <div className="modal-overlay animate-fade-in" onClick={() => setShowSuggestions(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>Add New Asset</h3>
+                    <h3>{t('addNewAsset')}</h3>
                     <button className="close-btn" onClick={onClose}><X size={28} /></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="asset-form">
                     <div className="form-group">
-                        <label>Market</label>
+                        <label>{t('market')}</label>
                         <div className="market-selector">
                             {(['TW', 'US', 'Crypto'] as const).map((m) => (
                                 <button
@@ -122,9 +124,9 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
 
                     <div className="form-group" style={{ position: 'relative' }}>
                         <label>
-                            {market === 'TW' ? 'Search Code or Name (e.g., 2330 / 台積電)' :
-                                market === 'US' ? 'Search Ticker or Name (e.g., AAPL / Apple)' :
-                                    'Search Crypto (e.g., BTC / Bitcoin)'}
+                            {market === 'TW' ? t('searchTW') :
+                                market === 'US' ? t('searchUS') :
+                                    t('searchCrypto')}
                         </label>
                         <div style={{ position: 'relative' }}>
                             <input
@@ -135,7 +137,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                                     if (name) setName(''); // Clear auto-filled name if user re-types
                                 }}
                                 onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                                placeholder="Start typing to search..."
+                                placeholder={t('searchPlaceholder')}
                                 required
                                 autoComplete="off"
                             />
@@ -166,18 +168,18 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                     </div>
 
                     <div className="form-group">
-                        <label>Asset Display Name</label>
+                        <label>{t('assetDisplayName')}</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Optional name override..."
+                            placeholder={t('placeholderName')}
                         />
                     </div>
 
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Quantity</label>
+                            <label>{t('quantity')}</label>
                             <input
                                 type="number"
                                 step="any"
@@ -188,7 +190,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                             />
                         </div>
                         <div className="form-group">
-                            <label>Average Cost</label>
+                            <label>{t('averageCost')}</label>
                             <input
                                 type="number"
                                 step="any"
@@ -202,7 +204,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
 
                     <button type="submit" className="submit-btn">
                         <Plus size={24} />
-                        <span>Add Asset</span>
+                        <span>{t('addAsset')}</span>
                     </button>
                 </form>
             </div>
