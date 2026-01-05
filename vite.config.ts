@@ -56,4 +56,5 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  base: "/assets-tracker/",
 }));
