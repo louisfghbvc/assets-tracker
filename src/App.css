@@ -1041,7 +1041,8 @@ input:focus {
 }
 
 /* Stats View & Chart */
-color: #fff;
+.view-title {
+  color: #fff;
 }
 
 .stats-header {
