@@ -739,7 +739,7 @@ function App() {
       </nav>
 
       {/* Global Toast Notification */}
-      {syncStatus && <div className="sync-status-msg">{syncStatus}</div>}
+      {syncStatus && <div className="sync-status-toast">{syncStatus}</div>}
     </div>
   );
 }

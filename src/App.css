@@ -172,45 +172,6 @@ body {
     display: flex !important;
   }
 
-  /* Toast Notification Style for Sync Msg */
-  /* Enhanced Toast Notification Style for Sync Msg */
-  .sync-status-msg {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(20, 20, 25, 0.98);
-    border: 1px solid var(--primary);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    z-index: 9999;
-    padding: 24px 40px;
-    font-size: 1.25rem;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    border-radius: 28px;
-    width: max-content;
-    max-width: 85vw;
-    backdrop-filter: blur(12px);
-    animation: toastPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    white-space: normal;
-    text-align: center;
-  }
-
-  @keyframes toastPop {
-    0% {
-      transform: translate(-50%, -50%) scale(0.9);
-      opacity: 0;
-    }
-
-    100% {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 1;
-    }
-  }
-
   .action-btn {
     width: 36px !important;
     height: 36px !important;
@@ -268,6 +229,52 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* Tooltip Hint System */
+[data-hint] {
+  position: relative;
+}
+
+/* Enhanced Global Toast Notification */
+.sync-status-toast {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(10, 10, 15, 0.98) !important;
+  border: 1px solid var(--primary) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8) !important;
+  z-index: 99999 !important;
+  padding: 32px 48px !important;
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px !important;
+  border-radius: 40px !important;
+  width: max-content !important;
+  min-width: 60vw !important;
+  max-width: 90vw !important;
+  backdrop-filter: blur(20px) !important;
+  animation: toastPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  white-space: normal !important;
+  text-align: center !important;
+  pointer-events: none !important;
+  /* Let clicks pass through if needed, though usually transient */
+}
+
+@keyframes toastPop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
 .exchange-rate-badge {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -278,15 +285,6 @@ body {
   color: var(--primary);
   letter-spacing: 0.5px;
   margin-right: 8px;
-}
-
-.sync-status-msg {
-  font-size: 0.75rem;
-  color: var(--primary);
-  background: rgba(var(--primary-rgb), 0.1);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-weight: 600;
 }
 
 /* Balance Section */
