@@ -878,25 +878,26 @@ body {
 }
 
 .record-delete-btn {
-  background: #f43f5e !important;
-  color: #ffffff !important;
-  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
   width: 36px;
   height: 36px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   margin-left: 12px;
-  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
 }
 
 .record-delete-btn.confirm-mode {
   width: auto !important;
   padding: 0 12px;
-  background: #e11d48 !important;
+  background: rgba(244, 63, 94, 0.15) !important;
+  border-color: var(--accent);
+  color: var(--accent) !important;
 }
 
 .confirm-text-small {
@@ -907,9 +908,10 @@ body {
 }
 
 .record-delete-btn:hover {
-  background: #ff4d6d !important;
+  background: rgba(244, 63, 94, 0.1) !important;
+  color: var(--accent);
+  border-color: var(--accent);
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(244, 63, 94, 0.45);
 }
 
 .animate-slide-down {
@@ -1001,34 +1003,30 @@ body {
 }
 
 .delete-item-btn {
-  background: #f43f5e;
-  /* Premium Rose Red */
-  border: none;
-  padding: 0;
-  outline: none;
-  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
   width: 44px;
-  /* Slightly larger */
   height: 44px;
   border-radius: 14px;
   display: flex !important;
   align-items: center;
   justify-content: center;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
-  box-shadow: 0 4px 15px rgba(244, 63, 94, 0.25);
+  padding: 0;
   position: relative;
   z-index: 100 !important;
-  /* Ensure it's on top */
   pointer-events: auto !important;
-  /* Force pointer events */
 }
 
 .delete-item-btn.confirm-mode {
   width: auto;
   padding: 0 16px;
-  background: #e11d48;
+  background: rgba(244, 63, 94, 0.15);
+  border-color: var(--accent);
+  color: var(--accent) !important;
 }
 
 .confirm-text {
@@ -1040,14 +1038,15 @@ body {
 .delete-item-btn svg {
   width: 22px !important;
   height: 22px !important;
-  stroke: #ffffff !important;
+  stroke: currentColor !important;
   stroke-width: 2.2px;
 }
 
 .delete-item-btn:hover {
-  background: #e11d48;
-  transform: scale(1.1) rotate(8deg);
-  box-shadow: 0 8px 25px rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.05);
 }
 
 /* Tab Bar */
