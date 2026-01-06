@@ -178,7 +178,16 @@ function App() {
     fetchExchangeRate();
   }, []);
 
+  const requireAuth = async () => {
+    if (!accessToken) {
+      login();
+      return false;
+    }
+    return true;
+  };
+
   const handleDeleteAsset = async (id: number) => {
+    if (!(await requireAuth())) return;
     try {
       await db.assets.delete(id);
       setSyncStatus("Record deleted");
@@ -189,6 +198,7 @@ function App() {
   };
 
   const handleDeleteSymbol = async (symbol: string) => {
+    if (!(await requireAuth())) return;
     try {
       const assetsToDelete = await db.assets.where("symbol").equals(symbol).toArray();
       for (const asset of assetsToDelete) {
@@ -217,11 +227,9 @@ function App() {
     scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
   });
 
-  const handleCloudUpload = () => {
-    if (!accessToken) {
-      login();
-      return;
-    }
+  const handleCloudUpload = async () => {
+    if (!(await requireAuth())) return;
+    setSyncStatus("Uploading to cloud...");
     performUpload();
   };
 
@@ -244,11 +252,8 @@ function App() {
     setTimeout(() => setSyncStatus(""), 3000);
   };
 
-  const handleCloudDownload = () => {
-    if (!accessToken) {
-      login();
-      return;
-    }
+  const handleCloudDownload = async () => {
+    if (!(await requireAuth())) return;
     if (window.confirm("Restore from cloud? This will REPLACE all your local data.")) {
       performDownload();
     }
@@ -283,6 +288,8 @@ function App() {
   };
 
   const handleRefresh = async () => {
+    if (!(await requireAuth())) return;
+    if (isRefreshing) return;
     setIsRefreshing(true);
     setSyncStatus("Refreshing prices...");
 
@@ -498,7 +505,9 @@ function App() {
           <section className="assets-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="section-header">
               <h2>{t('yourAssets')}</h2>
-              <button className="add-btn" onClick={() => setIsModalOpen(true)}>
+              <button className="add-btn" onClick={async () => {
+                if (await requireAuth()) setIsModalOpen(true);
+              }}>
                 <Plus size={24} />
               </button>
             </div>
@@ -536,8 +545,9 @@ function App() {
                       <button
                         className={`delete-item-btn ${deletingSymbol === asset.symbol ? 'confirm-mode' : ''}`}
                         title={deletingSymbol === asset.symbol ? t('confirmDeletion') : t('deleteAsset')}
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
+                          if (!(await requireAuth())) return;
                           if (deletingSymbol === asset.symbol) {
                             handleDeleteSymbol(asset.symbol);
                           } else {
@@ -583,8 +593,9 @@ function App() {
                             </div>
                             <button
                               className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
+                                if (!(await requireAuth())) return;
                                 if (deletingRecordId === item.id) {
                                   if (item.id) handleDeleteAsset(item.id);
                                   setDeletingRecordId(null);
