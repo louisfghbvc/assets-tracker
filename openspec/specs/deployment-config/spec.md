@@ -1,7 +1,8 @@
-# Spec: Deployment Configuration
+# deployment-config Specification
 
-## MODIFIED Requirements
-
+## Purpose
+TBD - created by archiving change fix-gh-pages-white-screen. Update Purpose after archive.
+## Requirements
 ### Requirement: Asset Resolution
 The application SHALL correctly load all static assets when deployed to any subdirectory.
 
@@ -17,3 +18,4 @@ The Vite build process MUST generate relative URLs for all injected assets.
 - **Given** a standard build command `npm run build`
 - **When** the build completes
 - **Then** `dist/index.html` should contain relative paths for `<script>` and `<link>` tags.
+

@@ -1,9 +1,9 @@
 # Proposal: Fix GitHub Pages White Screen
 
-## Problem
+## Why
 The AssetTracker application displays a white screen when deployed to GitHub Pages. This is due to incorrect asset path resolution.
 
-## Analysis
+## What Changes
 - **Absolute Paths**: `index.html` uses absolute paths (e.g., `/src/main.tsx`) which fail when the app is hosted in a subdirectory like `/assets-tracker/`.
 - **Missing Base URL**: `vite.config.ts` does not define a `base` path, defaulting to `/`, which is incorrect for project-page deployments.
 
