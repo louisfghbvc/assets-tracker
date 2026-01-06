@@ -176,7 +176,12 @@ function App() {
     };
 
     assets?.forEach(asset => {
-      const market = asset.market;
+      let market = asset.market;
+      const m = market?.toUpperCase();
+      if (m === 'CRYPTO') market = 'Crypto';
+      else if (m === 'TW') market = 'TW';
+      else if (m === 'US') market = 'US';
+
       if (stats[market]) {
         const itemValue = (asset.currentPrice || 0) * asset.quantity;
         const itemCost = asset.cost * asset.quantity;
