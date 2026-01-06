@@ -163,9 +163,19 @@ body {
 }
 
 @media (max-width: 480px) {
+  .header-actions {
+    gap: 4px !important;
+    /* Forced tight gap */
+  }
+
+  .lang-btn {
+    display: none !important;
+    /* Hide language switch on mobile to save space */
+  }
+
   .action-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px !important;
+    height: 36px !important;
     border-radius: 10px;
   }
 
@@ -1703,7 +1713,7 @@ input:focus {
   }
 
   .user-name-text {
-    display: none;
+    display: none !important;
   }
 
   .action-btn {

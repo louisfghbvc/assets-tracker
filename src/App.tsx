@@ -421,7 +421,7 @@ function App() {
               <span className="exchange-rate-badge">USD/TWD: {exchangeRate.toFixed(2)}</span>
             )}
             {syncStatus && <span className="sync-status-msg">{syncStatus}</span>}
-            <button className="action-btn" onClick={toggleLanguage} data-hint={language === 'zh' ? 'Switch to English' : '切換至中文'}>
+            <button className="action-btn lang-btn" onClick={toggleLanguage} data-hint={language === 'zh' ? 'Switch to English' : '切換至中文'}>
               <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>{language === 'zh' ? 'EN' : '中'}</span>
             </button>
             <button className="action-btn" onClick={handleCloudUpload} data-hint={t('backupToCloud')}>
