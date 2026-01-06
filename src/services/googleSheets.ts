@@ -125,11 +125,20 @@ export const googleSheetsService = {
 
         // 2. Search Drive for existing "AssetsTracker_DB"
         try {
-            const query = encodeURIComponent("name = 'AssetsTracker_DB' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
+            // Chaneged from '=' to 'contains' to be more robust
+            const query = encodeURIComponent("name contains 'AssetsTracker_DB' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
             const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime)`, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
+
+            if (!searchRes.ok) {
+                const errText = await searchRes.text();
+                console.error("[Sync] Drive search failed:", searchRes.status, errText);
+                throw new Error("Drive API Error: Please ensure Google Drive API is enabled in your Google Cloud Console.");
+            }
+
             const searchData = await searchRes.json();
+            console.log("[Sync] Raw Drive search result:", searchData);
 
             if (searchData.files && searchData.files.length > 0) {
                 console.log(`[Sync] Found ${searchData.files.length} matching spreadsheets:`, searchData.files.map((f: any) => `${f.name} (${f.id}) - Modified: ${f.modifiedTime}`));
@@ -143,9 +152,12 @@ export const googleSheetsService = {
                 console.log("[Sync] Using the most recently modified spreadsheet:", spreadsheetId);
                 localStorage.setItem('google_spreadsheet_id', spreadsheetId!);
                 return spreadsheetId;
+            } else {
+                console.log("[Sync] No matching spreadsheets found with query:", decodeURIComponent(query));
             }
         } catch (e) {
             console.error("Failed to search Drive:", e);
+            throw e; // Re-throw to propagate the error
         }
 
         // 3. Create new if not found
