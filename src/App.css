@@ -168,10 +168,7 @@ body {
     /* Forced tight gap */
   }
 
-  .lang-btn {
-    display: none !important;
-    /* Hide language switch on mobile to save space */
-  }
+  /* Language button restored */
 
   .action-btn {
     width: 36px !important;

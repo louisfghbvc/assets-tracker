@@ -40,33 +40,35 @@
 html,
 body {
   width: 100%;
+  height: 100%;
+  /* Full height */
   margin: 0;
   padding: 0;
-  overflow-x: hidden !important;
-  /* Force clip horizontal overflow */
-  position: relative;
-  /* Ensure overflow clip works */
-}
-
-/* Ensure no scroll bounce on x-axis */
-html {
-  overscroll-behavior-x: none;
+  overflow: hidden !important;
+  /* Lock viewport completely */
+  position: fixed;
+  /* Stick to screen */
+  inset: 0;
+  overscroll-behavior: none;
 }
 
 body {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: #0c0c0e;
-  /* Simplified background for performance */
   -webkit-overflow-scrolling: touch;
 }
 
 #root {
   width: 100%;
-  min-height: 100vh;
-  overflow-x: hidden !important;
-  /* Double safety */
+  height: 100%;
+  /* Full height of container */
+  overflow-y: auto;
+  /* Internal scrolling */
+  overflow-x: hidden;
+  /* Prevent horizontal scroll */
+  -webkit-overflow-scrolling: touch;
+  /* Smooth scrolling */
 }
 
 a {
