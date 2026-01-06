@@ -1772,6 +1772,7 @@ input:focus {
     display: none;
   }
 }
+
 /* Settings & Exchange Management */
 .settings-view {
   display: flex;
@@ -1818,7 +1819,8 @@ input:focus {
   gap: 8px;
 }
 
-.inline-sync-btn, .inline-delete-btn {
+.inline-sync-btn,
+.inline-delete-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   width: 40px;
@@ -1830,6 +1832,8 @@ input:focus {
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
+  padding: 0;
+  box-shadow: none;
 }
 
 .inline-sync-btn:hover {
@@ -1874,7 +1878,8 @@ input:focus {
   gap: 12px;
 }
 
-.settings-input, .settings-select {
+.settings-input,
+.settings-select {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--glass-border);
   border-radius: 12px;
@@ -1884,7 +1889,8 @@ input:focus {
   width: 100%;
 }
 
-.settings-input:focus, .settings-select:focus {
+.settings-input:focus,
+.settings-select:focus {
   border-color: var(--primary);
   outline: none;
   background: rgba(var(--primary-rgb), 0.05);
@@ -1921,4 +1927,3 @@ input:focus {
   border-radius: 4px;
   border: 1px solid rgba(var(--primary-rgb), 0.3);
 }
-

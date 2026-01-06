@@ -1,4 +1,5 @@
 const SHEET_NAME = 'Portfolio';
+const CONFIG_SHEET_NAME = 'ExchangeConfigs';
 
 export interface GoogleSheetAsset {
     recordId: string;
@@ -13,17 +14,26 @@ export interface GoogleSheetAsset {
 
 export const googleSheetsService = {
     async fetchPortfolio(accessToken: string, spreadsheetId: string) {
+        return this.fetchSheetValues(accessToken, spreadsheetId, SHEET_NAME);
+    },
+
+    async fetchExchanges(accessToken: string, spreadsheetId: string) {
+        return this.fetchSheetValues(accessToken, spreadsheetId, CONFIG_SHEET_NAME);
+    },
+
+    async fetchSheetValues(accessToken: string, spreadsheetId: string, sheetName: string) {
         try {
-            // First, check if SHEET_NAME exists, otherwise fallback to first sheet
+            // Check if sheet exists
             const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
             const metaData = await metaRes.json();
-            const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === SHEET_NAME);
-            const targetSheet = sheetExists ? SHEET_NAME : metaData.sheets?.[0]?.properties.title || SHEET_NAME;
+            const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === sheetName);
+
+            if (!sheetExists) return [];
 
             const response = await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${targetSheet}!A1:Z2000`,
+                `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A1:Z2000`,
                 {
                     headers: { Authorization: `Bearer ${accessToken}` },
                 }
@@ -34,15 +44,16 @@ export const googleSheetsService = {
             }
 
             const data = await response.json();
-            console.log(`[Sync] Fetched ${data.values?.length || 0} rows from sheet: "${targetSheet}" in Spreadsheet: https://docs.google.com/spreadsheets/d/${spreadsheetId}`);
+            // console.log(`[Sync] Fetched ${data.values?.length || 0} rows from sheet: "${sheetName}" in Spreadsheet: https://docs.google.com/spreadsheets/d/${spreadsheetId}`); // Removed specific log
             return data.values || [];
         } catch (e) {
-            console.error("Fetch portfolio failed:", e);
+            console.error(`Fetch ${sheetName} failed:`, e);
             throw e;
         }
     },
 
     async updatePortfolio(accessToken: string, spreadsheetId: string, assets: any[]) {
+        await this.ensureSheetExists(accessToken, spreadsheetId, SHEET_NAME);
         const values = assets.map(asset => [
             asset.recordId,
             asset.symbol,
@@ -54,7 +65,6 @@ export const googleSheetsService = {
             asset.lastUpdated
         ]);
 
-        // Add headers if updating the whole sheet
         const body = {
             values: [
                 ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated'],
@@ -62,8 +72,31 @@ export const googleSheetsService = {
             ]
         };
 
+        return this.updateSheetValues(accessToken, spreadsheetId, SHEET_NAME, body, assets.length + 1, 'H');
+    },
+
+    async updateExchanges(accessToken: string, spreadsheetId: string, configs: any[]) {
+        await this.ensureSheetExists(accessToken, spreadsheetId, CONFIG_SHEET_NAME);
+        const values = configs.map(config => [
+            config.exchangeName,
+            config.apiKey,
+            config.apiSecret,
+            config.lastSynced || ''
+        ]);
+
+        const body = {
+            values: [
+                ['ExchangeName', 'ApiKey', 'ApiSecret', 'LastSynced'],
+                ...values
+            ]
+        };
+
+        return this.updateSheetValues(accessToken, spreadsheetId, CONFIG_SHEET_NAME, body, configs.length + 1, 'D');
+    },
+
+    async updateSheetValues(accessToken: string, spreadsheetId: string, sheetName: string, body: any, rowCount: number, lastCol: string) {
         const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A1:H${assets.length + 1}?valueInputOption=USER_ENTERED`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A1:${lastCol}${rowCount}?valueInputOption=USER_ENTERED`,
             {
                 method: 'PUT',
                 headers: {
@@ -81,17 +114,50 @@ export const googleSheetsService = {
         return response.json();
     },
 
-    async clearSheet(accessToken: string, spreadsheetId: string) {
-        const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A1:Z1000:clear`,
-            {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${accessToken}` },
-            }
-        );
+    async ensureSheetExists(accessToken: string, spreadsheetId: string, sheetName: string) {
+        const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const metaData = await metaRes.json();
+        const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === sheetName);
 
-        if (response.status === 401) {
-            throw new Error("UNAUTHORIZED");
+        if (!sheetExists) {
+            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    requests: [{ addSheet: { properties: { title: sheetName } } }]
+                })
+            });
+        }
+    },
+
+    async clearSheet(accessToken: string, spreadsheetId: string) {
+        // Clear both sheets if they exist
+        for (const name of [SHEET_NAME, CONFIG_SHEET_NAME]) {
+            // Check if sheet exists before clearing
+            const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const metaData = await metaRes.json();
+            const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === name);
+
+            if (sheetExists) {
+                const response = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${name}!A1:Z2000:clear`,
+                    {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                    }
+                );
+
+                if (response.status === 401) {
+                    throw new Error("UNAUTHORIZED");
+                }
+            }
         }
     },
 
