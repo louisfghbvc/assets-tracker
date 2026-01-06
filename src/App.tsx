@@ -293,7 +293,7 @@ function App() {
   };
 
   const handleRefresh = async () => {
-    if (!(await requireAuth())) return;
+    // Removed requireAuth() as price fetching is public and doesn't need Google Token
     if (isRefreshing) return;
     setIsRefreshing(true);
     setSyncStatus("Refreshing prices...");
