@@ -37,10 +37,20 @@
   --glass-blur: blur(20px);
 }
 
-* {
-  box-sizing: border-box;
+html,
+body {
+  width: 100%;
   margin: 0;
   padding: 0;
+  overflow-x: hidden !important;
+  /* Force clip horizontal overflow */
+  position: relative;
+  /* Ensure overflow clip works */
+}
+
+/* Ensure no scroll bounce on x-axis */
+html {
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -49,14 +59,14 @@ body {
   flex-direction: column;
   background: #0c0c0e;
   /* Simplified background for performance */
-  overflow-x: hidden;
-  /* Improve scrolling performance */
   -webkit-overflow-scrolling: touch;
 }
 
 #root {
   width: 100%;
   min-height: 100vh;
+  overflow-x: hidden !important;
+  /* Double safety */
 }
 
 a {
