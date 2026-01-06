@@ -738,8 +738,34 @@ function App() {
         </div>
       </nav>
 
-      {/* Global Toast Notification */}
-      {syncStatus && <div className="sync-status-toast">{syncStatus}</div>}
+      {/* Global Toast Notification - FORCE INLINE STYLES */}
+      {syncStatus && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'fixed',
+          top: '12%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'rgba(20, 20, 25, 0.9)',
+          border: '1px solid rgba(59, 130, 246, 0.5)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          zIndex: 999999,
+          padding: '12px 24px',
+          fontSize: '1rem',
+          fontWeight: 600,
+          borderRadius: '20px',
+          width: 'max-content',
+          maxWidth: '90vw',
+          textAlign: 'center',
+          color: 'white',
+          backdropFilter: 'blur(12px)',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          {syncStatus}
+        </div>
+      )}
     </div>
   );
 }
