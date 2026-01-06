@@ -13,19 +13,33 @@ export interface GoogleSheetAsset {
 
 export const googleSheetsService = {
     async fetchPortfolio(accessToken: string, spreadsheetId: string) {
-        const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${SHEET_NAME}!A2:H1000`,
-            {
-                headers: { Authorization: `Bearer ${accessToken}` },
+        try {
+            // First, check if SHEET_NAME exists, otherwise fallback to first sheet
+            const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const metaData = await metaRes.json();
+            const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === SHEET_NAME);
+            const targetSheet = sheetExists ? SHEET_NAME : metaData.sheets?.[0]?.properties.title || SHEET_NAME;
+
+            const response = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${targetSheet}!A1:Z2000`,
+                {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                }
+            );
+
+            if (response.status === 401) {
+                throw new Error("UNAUTHORIZED");
             }
-        );
 
-        if (response.status === 401) {
-            throw new Error("UNAUTHORIZED");
+            const data = await response.json();
+            console.log(`[Sync] Fetched ${data.values?.length || 0} rows from sheet: "${targetSheet}" in Spreadsheet: https://docs.google.com/spreadsheets/d/${spreadsheetId}`);
+            return data.values || [];
+        } catch (e) {
+            console.error("Fetch portfolio failed:", e);
+            throw e;
         }
-
-        const data = await response.json();
-        return data.values || [];
     },
 
     async updatePortfolio(accessToken: string, spreadsheetId: string, assets: any[]) {
@@ -84,7 +98,30 @@ export const googleSheetsService = {
     async findOrCreateSpreadsheet(accessToken: string) {
         // 1. Check local storage first
         let spreadsheetId = localStorage.getItem('google_spreadsheet_id');
-        if (spreadsheetId) return spreadsheetId;
+        if (spreadsheetId) {
+            try {
+                // Verify the file exists and is not trashed
+                const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,trashed`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.trashed) {
+                        console.log(`[Sync] Using valid spreadsheet from localStorage: https://docs.google.com/spreadsheets/d/${spreadsheetId}`);
+                        return spreadsheetId;
+                    } else {
+                        console.warn("[Sync] Cached spreadsheet is in trash. Searching for a non-trashed one...");
+                    }
+                } else {
+                    console.warn("[Sync] Cached spreadsheet ID is invalid or unreachable. Searching again...");
+                }
+            } catch (e) {
+                console.error("[Sync] Failed to verify cached spreadsheet:", e);
+            }
+            // If we reach here, the cached ID is invalid or trashed
+            localStorage.removeItem('google_spreadsheet_id');
+            spreadsheetId = null;
+        }
 
         // 2. Search Drive for existing "AssetsTracker_DB"
         try {
@@ -95,13 +132,15 @@ export const googleSheetsService = {
             const searchData = await searchRes.json();
 
             if (searchData.files && searchData.files.length > 0) {
+                console.log(`[Sync] Found ${searchData.files.length} matching spreadsheets:`, searchData.files.map((f: any) => `${f.name} (${f.id}) - Modified: ${f.modifiedTime}`));
+
                 // Sort by modifiedTime (newest first) to find the active one
                 const sortedFiles = searchData.files.sort((a: any, b: any) =>
                     new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime()
                 );
 
                 spreadsheetId = sortedFiles[0].id;
-                console.log("Found existing spreadsheet(s). Using most recent:", spreadsheetId);
+                console.log("[Sync] Using the most recently modified spreadsheet:", spreadsheetId);
                 localStorage.setItem('google_spreadsheet_id', spreadsheetId!);
                 return spreadsheetId;
             }
