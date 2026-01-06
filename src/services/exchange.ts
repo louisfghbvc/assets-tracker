@@ -66,15 +66,15 @@ export const exchangeService = {
         const timestamp = Date.now();
         const method = 'GET';
         const path = '/api/v1/account/balances';
-        const message = `${method}${path}${timestamp}`;
+        const query = `timestamp=${timestamp}`;
+        const message = `${method}${path}?${query}`;
         const signature = await hmacSha256(secret, message);
 
-        const url = `${CORS_PROXY}${encodeURIComponent(`https://api.pionex.com${path}`)}`;
+        const url = `${CORS_PROXY}${encodeURIComponent(`https://api.pionex.com${path}?${query}`)}`;
         const res = await fetch(url, {
             headers: {
                 'PIONEX-KEY': key,
                 'PIONEX-SIGNATURE': signature,
-                'timestamp': timestamp.toString(),
             }
         });
 
