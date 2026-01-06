@@ -11,7 +11,9 @@ import {
   CloudUpload,
   CloudDownload,
   Trash2,
-  GanttChartSquare
+  GanttChartSquare,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -36,6 +38,7 @@ function App() {
   const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<number | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem("google_access_token"));
+
   const [syncStatus, setSyncStatus] = useState<string>("");
   const [exchangeRate, setExchangeRate] = useState<number>(32.5);
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
@@ -45,6 +48,21 @@ function App() {
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
   const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
   const [userProfile, setUserProfile] = useState<{ name: string, email: string, picture: string } | null>(null);
+  const [hideValues, setHideValues] = useState<boolean>(() => {
+    return localStorage.getItem("hideValues") === "true";
+  });
+
+  // Persist hideValues
+  useEffect(() => {
+    localStorage.setItem("hideValues", hideValues.toString());
+  }, [hideValues]);
+
+  // Helper to mask values
+  const displayValue = (value: string | number, prefix: string = "") => {
+    if (hideValues) return "****";
+    return typeof value === "number" ? `${prefix}${value.toLocaleString()}` : `${prefix}${value}`;
+  };
+
   const [language, setLanguage] = useState<Language>((localStorage.getItem("app_language") as Language) || 'zh');
 
   const t = (key: keyof typeof translations.en) => {
@@ -465,13 +483,30 @@ function App() {
         </div>
 
         <div className="balance-section">
-          <p className="balance-label">{t('totalBalance')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <p className="balance-label">{t('totalBalance')}</p>
+            <button
+              onClick={() => setHideValues(!hideValues)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-muted)'
+              }}
+            >
+              {hideValues ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           <h1 className="balance-amount">
-            ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            {displayValue(totalBalance, '$')}
           </h1>
           <div className="balance-stat">
             <span className={`stat-value ${Number(balanceChange) >= 0 ? 'positive' : 'negative'}`}>
-              {Number(balanceChange) >= 0 ? '+' : ''}${Math.abs(Number(balanceChange)).toLocaleString()} ({balanceChangePercent}%)
+              {displayValue(Math.abs(Number(balanceChange)), Number(balanceChange) >= 0 ? '+$' : '$')} ({balanceChangePercent}%)
             </span>
             <span className="stat-label">{t('thanYesterday')}</span>
           </div>
@@ -499,7 +534,7 @@ function App() {
                     </span>
                   </div>
                   <p className="stat-card-value">
-                    ${(stat.totalValue / (stat.market === 'TW' ? 1000 : 1)).toFixed(1)}{stat.market === 'TW' ? 'k' : ''}
+                    {hideValues ? '****' : `$${(stat.totalValue / (stat.market === 'TW' ? 1000 : 1)).toFixed(1)}${stat.market === 'TW' ? 'k' : ''}`}
                   </p>
                 </div>
               </div>
@@ -535,7 +570,7 @@ function App() {
                     <div className="asset-market">
                       <div className="asset-value-group">
                         <p className="asset-price">
-                          ${asset.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          {displayValue(asset.totalValue, '$')}
                           <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
                         </p>
                         <span className={`asset-profit-badge ${asset.profitPercent >= 0 ? 'positive' : 'negative'}`}>
@@ -543,7 +578,7 @@ function App() {
                         </span>
                       </div>
                       <p className="market-per-unit">
-                        ${(asset.currentPrice || 0).toLocaleString()} {t('perUnit')}
+                        {displayValue(asset.currentPrice || 0, '$')} {t('perUnit')}
                       </p>
                     </div>
                     <div className="asset-actions">
@@ -578,12 +613,12 @@ function App() {
                       <div className="position-summary">
                         <div className="summary-stat">
                           <span className="label">{t('totalQuantity')}</span>
-                          <span className="value">{asset.quantity.toLocaleString()}</span>
+                          <span className="value">{displayValue(asset.quantity)}</span>
                         </div>
                         <div className="summary-stat">
                           <span className="label">{t('avgCost')}</span>
                           <span className="value">
-                            ${asset.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            {displayValue(asset.cost, '$')}
                           </span>
                         </div>
                       </div>
@@ -593,8 +628,8 @@ function App() {
                         {asset.items.map((item: any, idx: number) => (
                           <div key={item.id || idx} className="record-item">
                             <div className="record-info">
-                              <span className="record-qty">{item.quantity.toLocaleString()} {t('units')}</span>
-                              <span className="record-cost"> {t('at')} ${item.cost.toLocaleString()}</span>
+                              <span className="record-qty">{displayValue(item.quantity)} {t('units')}</span>
+                              <span className="record-cost"> {t('at')} {displayValue(item.cost, '$')}</span>
                             </div>
                             <button
                               className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
