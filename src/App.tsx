@@ -222,7 +222,7 @@ function App() {
       await fetchUserProfile(tokenResponse.access_token);
 
       // Auto-sync
-      setTimeout(() => performDownload(tokenResponse.access_token), 500);
+      setTimeout(() => performDownload(tokenResponse.access_token, true), 500);
     },
     scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
   });
@@ -259,7 +259,7 @@ function App() {
     }
   };
 
-  const performDownload = async (tokenOverride?: string) => {
+  const performDownload = async (tokenOverride?: string, suppressLogout = false) => {
     const token = tokenOverride || accessToken;
     if (!token) return;
 
@@ -270,8 +270,13 @@ function App() {
       await handleRefresh();
     } else {
       if (result.error === "UNAUTHORIZED") {
-        handleLogout();
-        setSyncStatus("Session expired. Please log in again.");
+        if (!suppressLogout) {
+          handleLogout();
+          setSyncStatus("Session expired. Please log in again.");
+        } else {
+          console.warn("Sync failed with UNAUTHORIZED, but logout suppressed (initial login).");
+          setSyncStatus("Sync failed. Please try again manually.");
+        }
       } else {
         setSyncStatus(`Restore failed: ${result.error}`);
       }
