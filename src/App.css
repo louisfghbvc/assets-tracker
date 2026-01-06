@@ -173,21 +173,42 @@ body {
   }
 
   /* Toast Notification Style for Sync Msg */
+  /* Enhanced Toast Notification Style for Sync Msg */
   .sync-status-msg {
-    display: block !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
     position: fixed;
-    top: 80px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    background: rgba(18, 18, 23, 0.95);
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 25, 0.98);
     border: 1px solid var(--primary);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    z-index: 2000;
-    padding: 8px 16px;
-    font-size: 0.85rem;
-    width: auto;
-    white-space: nowrap;
-    animation: fadeIn 0.3s ease;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    padding: 20px 32px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-radius: 24px;
+    width: max-content;
+    max-width: 80vw;
+    backdrop-filter: blur(12px);
+    animation: toastPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    white-space: normal;
+    text-align: center;
+  }
+
+  @keyframes toastPop {
+    0% {
+      transform: translate(-50%, -50%) scale(0.9);
+      opacity: 0;
+    }
+
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
   }
 
   .action-btn {
