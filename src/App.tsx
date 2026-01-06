@@ -761,7 +761,7 @@ function App() {
           textAlign: 'center',
           color: 'white',
           backdropFilter: 'blur(12px)',
-          animation: 'fadeIn 0.3s ease'
+          animation: 'simpleFadeIn 0.3s ease'
         }}>
           {syncStatus}
         </div>
