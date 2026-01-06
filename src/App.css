@@ -104,8 +104,7 @@ body {
     /* Hide App Name on Mobile */
   }
 
-  .exchange-rate-badge,
-  .sync-status-msg {
+  .exchange-rate-badge {
     display: none;
     /* Hide extra info on Mobile */
   }
@@ -168,7 +167,28 @@ body {
     /* Forced tight gap */
   }
 
-  /* Language button restored */
+  /* Language button restored & Forced Visible */
+  .lang-btn {
+    display: flex !important;
+  }
+
+  /* Toast Notification Style for Sync Msg */
+  .sync-status-msg {
+    display: block !important;
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(18, 18, 23, 0.95);
+    border: 1px solid var(--primary);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    width: auto;
+    white-space: nowrap;
+    animation: fadeIn 0.3s ease;
+  }
 
   .action-btn {
     width: 36px !important;
