@@ -221,8 +221,8 @@ function App() {
       // Fetch User Profile immediately after login
       await fetchUserProfile(tokenResponse.access_token);
 
-      // Auto-sync
-      setTimeout(() => performDownload(tokenResponse.access_token, true), 500);
+      // Removed Auto-sync to prevent overwriting local work
+      // User must manually choose to Backup (Upload) or Restore (Download)
     },
     scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
   });
