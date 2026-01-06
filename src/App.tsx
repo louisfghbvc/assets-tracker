@@ -393,6 +393,16 @@ function App() {
     { name: 'Crypto', value: assets.filter(a => a.market === 'Crypto').reduce((s, a) => s + (a.currentPrice || 0) * a.quantity, 0) * exchangeRate },
   ].filter(d => d.value > 0) : [];
 
+  const exchangeTotals = useMemo(() => {
+    if (!assets) return {};
+    return assets.reduce((acc, asset) => {
+      const value = (asset.currentPrice || 0) * asset.quantity;
+      const valueTwd = asset.market === 'TW' ? value : value * exchangeRate;
+      acc[asset.source] = (acc[asset.source] || 0) + valueTwd;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [assets, exchangeRate]);
+
   const assetData = useMemo(() => {
     if (!mergedAssets) return [];
     return mergedAssets
@@ -584,7 +594,12 @@ function App() {
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           {asset.items.some(i => i.source === 'pionex' || i.source === 'bitopro') && (
-                            <span className="source-badge">
+                            <span
+                              className="source-badge"
+                              title={asset.items.some(i => i.source === 'pionex') && asset.items.some(i => i.source === 'bitopro')
+                                ? `${t('pionex')} & ${t('bitopro')}`
+                                : asset.items.find(i => i.source === 'pionex') ? t('pionex') : t('bitopro')}
+                            >
                               {asset.items.find(i => i.source === 'pionex') ? 'P' : 'B'}
                             </span>
                           )}
@@ -646,6 +661,7 @@ function App() {
                             <div className="record-info">
                               <span className="record-qty">{displayValue(item.quantity)} {t('units')}</span>
                               <span className="record-cost"> {t('at')} {displayValue(item.cost, '$')}</span>
+                              <span className="record-source"> ({item.source === 'manual' ? t('manual') : t(item.source as any)})</span>
                             </div>
                             <button
                               className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
@@ -699,6 +715,11 @@ function App() {
                     <p className="exchange-sync-time">
                       {t('lastSynced')}: {config.lastSynced ? new Date(config.lastSynced).toLocaleString() : t('never')}
                     </p>
+                    {exchangeTotals[config.exchangeName] > 0 && (
+                      <p className="exchange-balance-total">
+                        {displayValue(exchangeTotals[config.exchangeName], '$')} TWD
+                      </p>
+                    )}
                   </div>
                   <div className="exchange-actions">
                     <button

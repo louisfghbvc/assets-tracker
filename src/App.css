@@ -1848,6 +1848,19 @@ input:focus {
   background: rgba(244, 63, 94, 0.1);
 }
 
+.exchange-balance-total {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-top: 4px;
+}
+
+.record-source {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .add-exchange-form {
   border-top: 1px solid var(--glass-border);
   padding-top: 24px;

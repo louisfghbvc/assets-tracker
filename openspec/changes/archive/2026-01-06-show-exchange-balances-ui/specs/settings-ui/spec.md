@@ -1,17 +1,6 @@
-# settings-ui Specification
+# Capability: Exchange Integration UI
 
-## Purpose
-TBD - created by archiving change fix-exchange-connection-icons. Update Purpose after archive.
-## Requirements
-### Requirement: Exchange Connection Management
-The system SHALL provide a clear list of linked exchanges with "Sync" and "Delete" actions.
-
-#### Scenario: Visual Feedback for Actions
-- **GIVEN** a linked exchange exists
-- **WHEN** the user views the Settings tab
-- **THEN** both the "Sync" (Refresh) and "Delete" (Trash) icons MUST be clearly visible and centered within their respective buttons.
-- **AND** the buttons should provide a visual hover state.
-
+## ADDED Requirements
 ### Requirement: Exchange Balance Summary
 The system SHALL display the total market value of all assets synced from a specific exchange.
 
@@ -27,4 +16,3 @@ The system SHALL clearly distinguish between manual and exchange-synced asset re
 - **GIVEN** an asset with multiple records (e.g. BTC from Manual and BitoPro)
 - **WHEN** the user expands the asset card
 - **THEN** each individual record MUST display its source ("Manual", "BitoPro", etc).
-
