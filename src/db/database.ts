@@ -11,6 +11,15 @@ export interface Asset {
     cost: number;             // Weighted average cost
     currentPrice?: number;
     lastUpdated: number;      // Timestamp
+    source: 'manual' | 'pionex' | 'bitopro';
+}
+
+export interface ExchangeConfig {
+    id?: number;
+    exchangeName: 'pionex' | 'bitopro';
+    apiKey: string;
+    apiSecret: string;
+    lastSynced?: number;
 }
 
 export interface SyncLog {
@@ -23,12 +32,25 @@ export interface SyncLog {
 export class AssetTrackerDatabase extends Dexie {
     assets!: Table<Asset>;
     syncLogs!: Table<SyncLog>;
+    exchangeConfigs!: Table<ExchangeConfig>;
 
     constructor() {
         super('AssetTrackerDB');
-        this.version(2).stores({
-            assets: '++id, recordId, symbol, type, market, lastUpdated',
-            syncLogs: '++id, lastSyncTime'
+        this.version(3).stores({
+            assets: '++id, recordId, symbol, type, market, lastUpdated, source',
+            syncLogs: '++id, lastSyncTime',
+            exchangeConfigs: '++id, exchangeName'
+        });
+
+        // Data Migration: Ensure existing assets have a 'source' and normalized market
+        this.version(4).upgrade(async tx => {
+            await tx.table('assets').toCollection().modify(asset => {
+                if (!asset.source) asset.source = 'manual';
+                const m = asset.market?.toUpperCase();
+                if (m === 'CRYPTO') asset.market = 'Crypto';
+                else if (m === 'TW') asset.market = 'TW';
+                else if (m === 'US') asset.market = 'US';
+            });
         });
     }
 }

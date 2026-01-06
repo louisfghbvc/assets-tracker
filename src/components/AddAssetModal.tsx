@@ -79,6 +79,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
             cost: parseFloat(cost) || 0,
             currentPrice: parseFloat(cost) || 0, // Initialize with cost
             lastUpdated: Date.now(),
+            source: 'manual'
         });
 
         // Trigger refresh in parent

@@ -29,6 +29,7 @@ import { db } from "./db/database";
 import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
 import { priceService } from "./services/price";
+import { exchangeService } from "./services/exchange";
 import AddAssetModal from "./components/AddAssetModal";
 import { translations, Language } from "./translations";
 
@@ -43,7 +44,7 @@ function App() {
   const [exchangeRate, setExchangeRate] = useState<number>(32.5);
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'assets' | 'stats'>('assets');
+  const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'settings'>('assets');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
   const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
@@ -123,11 +124,18 @@ function App() {
     }> = {};
 
     assets.forEach(asset => {
+      // Safety/Fallback: Normalize market in-memory if migration failed
+      let currentMarket = asset.market;
+      const m = currentMarket?.toUpperCase();
+      if (m === 'CRYPTO') currentMarket = 'Crypto';
+      else if (m === 'TW') currentMarket = 'TW';
+      else if (m === 'US') currentMarket = 'US';
+
       if (!groups[asset.symbol]) {
         groups[asset.symbol] = {
           name: asset.name,
           symbol: asset.symbol,
-          market: asset.market,
+          market: currentMarket,
           type: asset.type,
           quantity: asset.quantity,
           totalCostBasis: asset.quantity * asset.cost,
@@ -145,18 +153,20 @@ function App() {
 
     return Object.values(groups).map(group => {
       const totalValue = group.quantity * group.currentPrice;
-      const profit = totalValue - group.totalCostBasis;
-      const profitPercent = group.totalCostBasis !== 0 ? (profit / group.totalCostBasis) * 100 : 0;
+      const profit = group.totalCostBasis > 0 ? totalValue - group.totalCostBasis : 0;
+      const profitPercent = group.totalCostBasis > 0 ? (profit / group.totalCostBasis) * 100 : 0;
 
       return {
         ...group,
-        cost: group.quantity > 0 ? group.totalCostBasis / group.quantity : 0,
+        cost: group.totalCostBasis > 0 && group.quantity > 0 ? group.totalCostBasis / group.quantity : 0,
         totalValue,
         profit,
         profitPercent
       };
     });
   }, [assets]);
+
+  const exchangeConfigs = useLiveQuery(() => db.exchangeConfigs.toArray());
 
   const marketStats = useMemo(() => {
     const stats: Record<string, { totalValue: number, totalCost: number }> = {
@@ -311,12 +321,12 @@ function App() {
   };
 
   const handleRefresh = async () => {
-    // Removed requireAuth() as price fetching is public and doesn't need Google Token
     if (isRefreshing) return;
     setIsRefreshing(true);
-    setSyncStatus("Refreshing prices...");
+    setSyncStatus("Refreshing...");
 
     try {
+      // 1. Refresh Prices
       const allAssets = await db.assets.toArray();
       const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
 
@@ -324,13 +334,8 @@ function App() {
 
       if (uniqueSymbols.length > 0) {
         const prices = await priceService.fetchPrices(uniqueSymbols);
-
-        if (prices.length === 0) {
-          setSyncStatus("No prices returned from API");
-        } else {
-          let updatedCount = 0;
+        if (prices.length > 0) {
           const priceMap = new Map(prices.map(p => [p.symbol.trim(), p.price]));
-
           for (const asset of allAssets) {
             const trimmedSymbol = asset.symbol.trim();
             const newPrice = priceMap.get(trimmedSymbol);
@@ -339,26 +344,25 @@ function App() {
                 currentPrice: newPrice,
                 lastUpdated: Date.now()
               });
-              updatedCount++;
             }
           }
-          setSyncStatus(`Updated ${updatedCount} prices`);
         }
-      } else {
-        setSyncStatus("No assets to refresh");
       }
-    } catch (e) {
-      console.error("Price refresh failed:", e);
-      setSyncStatus("Refresh failed.");
 
-      const count = await db.assets.count();
-      if (count === 0) {
-        await db.assets.bulkAdd([
-          { recordId: crypto.randomUUID(), name: '台積電', symbol: '2330.TW', quantity: 1, cost: 600, currentPrice: 1040, type: 'stock', market: 'TW', lastUpdated: Date.now() },
-          { recordId: crypto.randomUUID(), name: 'Apple Inc.', symbol: 'AAPL', quantity: 10, cost: 150, currentPrice: 220, type: 'stock', market: 'US', lastUpdated: Date.now() },
-          { recordId: crypto.randomUUID(), name: 'Bitcoin', symbol: 'BTC', quantity: 0.5, cost: 30000, currentPrice: 95000, type: 'crypto', market: 'Crypto', lastUpdated: Date.now() },
-        ]);
+      // 2. Sync Exchanges
+      const configs = await db.exchangeConfigs.toArray();
+      for (const config of configs) {
+        try {
+          await exchangeService.syncBalances(config);
+        } catch (e) {
+          console.error(`Failed to sync ${config.exchangeName}:`, e);
+        }
       }
+
+      setSyncStatus("Refresh complete!");
+    } catch (e) {
+      console.error("Refresh failed:", e);
+      setSyncStatus("Refresh failed.");
     } finally {
       setIsRefreshing(false);
       setTimeout(() => setSyncStatus(""), 3000);
@@ -573,9 +577,16 @@ function App() {
                           {displayValue(asset.totalValue, '$')}
                           <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
                         </p>
-                        <span className={`asset-profit-badge ${asset.profitPercent >= 0 ? 'positive' : 'negative'}`}>
-                          {asset.profitPercent >= 0 ? '+' : ''}{asset.profitPercent.toFixed(1)}%
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {asset.items.some(i => i.source === 'pionex' || i.source === 'bitopro') && (
+                            <span className="source-badge">
+                              {asset.items.find(i => i.source === 'pionex') ? 'P' : 'B'}
+                            </span>
+                          )}
+                          <span className={`asset-profit-badge ${asset.profitPercent >= 0 ? 'positive' : 'negative'}`}>
+                            {asset.profitPercent >= 0 ? '+' : ''}{asset.profitPercent.toFixed(1)}%
+                          </span>
+                        </div>
                       </div>
                       <p className="market-per-unit">
                         {displayValue(asset.currentPrice || 0, '$')} {t('perUnit')}
@@ -671,6 +682,73 @@ function App() {
         </>
       )}
 
+      {activeTab === 'settings' && (
+        <section className="settings-view animate-fade-in">
+          <div className="card settings-container">
+            <h2 className="view-title">{t('exchanges')}</h2>
+            <div className="exchange-list">
+              {exchangeConfigs?.map(config => (
+                <div key={config.id} className="exchange-config-card">
+                  <div className="exchange-info">
+                    <p className="exchange-name">{t(config.exchangeName as any)}</p>
+                    <p className="exchange-sync-time">
+                      {t('lastSynced')}: {config.lastSynced ? new Date(config.lastSynced).toLocaleString() : t('never')}
+                    </p>
+                  </div>
+                  <div className="exchange-actions">
+                    <button
+                      className="inline-sync-btn"
+                      onClick={() => exchangeService.syncBalances(config)}
+                      title={t('syncExchange')}
+                    >
+                      <RefreshCw size={18} />
+                    </button>
+                    <button
+                      className="inline-delete-btn"
+                      onClick={() => {
+                        if (config.id && window.confirm(t('confirmDeleteExchange'))) {
+                          exchangeService.deleteExchange(config.id, config.exchangeName);
+                        }
+                      }}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="add-exchange-form card-sub">
+              <h3>{t('addExchange')}</h3>
+              <p className="tip">{t('readOnlyTip')}</p>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const name = formData.get('exchangeName') as 'pionex' | 'bitopro';
+                const key = formData.get('apiKey') as string;
+                const secret = formData.get('apiSecret') as string;
+
+                if (name && key && secret) {
+                  await db.exchangeConfigs.add({
+                    exchangeName: name,
+                    apiKey: key,
+                    apiSecret: secret
+                  });
+                  (e.target as HTMLFormElement).reset();
+                }
+              }}>
+                <select name="exchangeName" className="settings-select" required>
+                  <option value="pionex">{t('pionex')}</option>
+                  <option value="bitopro">{t('bitopro')}</option>
+                </select>
+                <input name="apiKey" type="text" placeholder={t('apiKey')} className="settings-input" required />
+                <input name="apiSecret" type="password" placeholder={t('apiSecret')} className="settings-input" required />
+                <button type="submit" className="settings-save-btn">{t('addExchange')}</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      )}
       {activeTab === 'stats' && (
         <section className="stats-view animate-fade-in">
           <div className="card chart-container">
@@ -770,6 +848,10 @@ function App() {
         <div className={`tab-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           <PieChart size={24} />
           <span>{t('stats')}</span>
+        </div>
+        <div className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+          <GanttChartSquare size={24} />
+          <span>{t('settings')}</span>
         </div>
       </nav>
 
