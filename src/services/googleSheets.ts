@@ -27,6 +27,7 @@ export const googleSheetsService = {
             const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
+            if (metaRes.status === 401) throw new Error("UNAUTHORIZED");
             const metaData = await metaRes.json();
             const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === sheetName);
 
@@ -119,11 +120,12 @@ export const googleSheetsService = {
         const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
+        if (metaRes.status === 401) throw new Error("UNAUTHORIZED");
         const metaData = await metaRes.json();
         const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === sheetName);
 
         if (!sheetExists) {
-            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+            const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -133,6 +135,7 @@ export const googleSheetsService = {
                     requests: [{ addSheet: { properties: { title: sheetName } } }]
                 })
             });
+            if (res.status === 401) throw new Error("UNAUTHORIZED");
         }
     },
 
@@ -143,6 +146,7 @@ export const googleSheetsService = {
             const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
+            if (metaRes.status === 401) throw new Error("UNAUTHORIZED");
             const metaData = await metaRes.json();
             const sheetExists = metaData.sheets?.some((s: any) => s.properties.title === name);
 
@@ -171,6 +175,7 @@ export const googleSheetsService = {
                 const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,trashed`, {
                     headers: { Authorization: `Bearer ${accessToken}` }
                 });
+                if (checkRes.status === 401) throw new Error("UNAUTHORIZED");
                 if (checkRes.ok) {
                     const checkData = await checkRes.json();
                     if (!checkData.trashed) {
@@ -199,6 +204,7 @@ export const googleSheetsService = {
             });
 
             if (!searchRes.ok) {
+                if (searchRes.status === 401) throw new Error("UNAUTHORIZED");
                 const errText = await searchRes.text();
                 console.error("[Sync] Drive search failed:", searchRes.status, errText);
                 throw new Error("Drive API Error: Please ensure Google Drive API is enabled in your Google Cloud Console.");

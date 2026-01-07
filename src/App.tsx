@@ -100,6 +100,11 @@ function App() {
       const res = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        setSyncStatus(t('sessionExpired'));
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         const profile = { name: data.name, email: data.email, picture: data.picture };
@@ -281,7 +286,7 @@ function App() {
     } else {
       if (result.error === "UNAUTHORIZED") {
         handleLogout();
-        setSyncStatus("Session expired. Please log in again.");
+        setSyncStatus(t('sessionExpired'));
       } else {
         setSyncStatus(`Backup failed: ${result.error}`);
       }
@@ -309,7 +314,7 @@ function App() {
       if (result.error === "UNAUTHORIZED") {
         if (!suppressLogout) {
           handleLogout();
-          setSyncStatus("Session expired. Please log in again.");
+          setSyncStatus(t('sessionExpired'));
         } else {
           console.warn("Sync failed with UNAUTHORIZED, but logout suppressed (initial login).");
           setSyncStatus("Sync failed. Please try again manually.");
