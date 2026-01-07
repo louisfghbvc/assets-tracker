@@ -2,6 +2,8 @@
 :root {
   --primary-rgb: 59, 130, 246;
   /* Sapphire Blue */
+  --spacing-fluid: clamp(12px, 4vw, 24px);
+  --balance-size: clamp(2.2rem, 10vw + 0.5rem, 3.8rem);
 }
 
 body {
@@ -18,20 +20,20 @@ body {
 .app-container {
   max-width: 500px;
   margin: 0 auto;
-  padding: 32px 24px 120px;
+  padding: 32px var(--spacing-fluid) 120px;
   min-height: 100vh;
   position: relative;
 }
 
 @media (max-width: 480px) {
   .app-container {
-    padding: 20px 16px 140px;
+    padding-bottom: 140px;
   }
 }
 
 @media (max-width: 400px) {
   .app-container {
-    padding: 16px 12px 140px;
+    padding-bottom: 140px;
   }
 }
 
@@ -50,10 +52,10 @@ body {
 
 /* Header */
 .header {
-  margin-bottom: 40px;
+  margin-bottom: clamp(24px, 5vh, 40px);
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: clamp(16px, 4vh, 32px);
 }
 
 .header-top {
@@ -314,8 +316,7 @@ body {
 
 .balance-amount {
   font-family: 'Outfit', sans-serif;
-  font-size: 3.8rem;
-  /* Slightly larger */
+  font-size: var(--balance-size);
   font-weight: 800;
   margin: 0;
   line-height: 1.1;
@@ -357,6 +358,14 @@ body {
 
   .stat-label {
     font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .balance-stat {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }
 
@@ -636,6 +645,14 @@ body {
   padding: 16px 20px;
   gap: 16px;
   width: 100%;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 350px) {
+  .asset-summary {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 
 .asset-item:hover {
@@ -717,7 +734,7 @@ body {
   }
 
   .asset-info {
-    max-width: 40%;
+    max-width: 45%;
   }
 
   .asset-name {
@@ -1171,6 +1188,8 @@ body {
   border-radius: 32px;
   width: 100%;
   max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
   padding: 40px;
   position: relative;
   box-shadow:
@@ -1388,6 +1407,30 @@ input:focus {
   align-items: center;
   width: 100%;
   margin-bottom: 24px;
+}
+
+@media (max-width: 350px) {
+  .modal-content {
+    padding: 24px 16px;
+  }
+
+  .asset-market {
+    width: 100%;
+    text-align: left;
+    order: 3;
+    padding-left: 56px;
+    /* Align with info text */
+    margin-top: -4px;
+  }
+
+  .asset-price {
+    font-size: 1rem;
+  }
+
+  .asset-actions {
+    margin-left: auto;
+    order: 2;
+  }
 }
 
 .stats-header .view-title {
