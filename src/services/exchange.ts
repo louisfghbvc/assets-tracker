@@ -82,14 +82,14 @@ export const exchangeService = {
         if (data.result === false) throw new Error(data.message || 'Pionex API error');
 
         return (data.data?.balances || [])
-            .filter((b: any) => parseFloat(b.available) + parseFloat(b.frozen) > 0)
+            .filter((b: any) => parseFloat(b.free) + parseFloat(b.frozen) > 0)
             .map((b: any) => ({
                 recordId: `pionex-${b.coin}-${Date.now()}`,
                 symbol: b.coin,
                 name: b.coin,
                 type: 'crypto',
                 market: 'Crypto',
-                quantity: parseFloat(b.available) + parseFloat(b.frozen),
+                quantity: parseFloat(b.free) + parseFloat(b.frozen),
                 cost: 0,
                 lastUpdated: Date.now(),
                 source: 'pionex'

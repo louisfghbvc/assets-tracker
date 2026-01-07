@@ -68,7 +68,7 @@ export const translations = {
         bitopro: "BitoPro",
         lastSynced: "Last synced",
         never: "Never",
-        readOnlyTip: "Tip: Use Read-Only API keys for better security.",
+        readOnlyTip: "Tip: Use Read-Only API keys. Note that Pionex API currently does NOT sync assets held in bots or earn accounts.",
         exchangeSyncSuccess: "Exchange balances updated!",
         confirmDeleteExchange: "Remove this connection? This will also remove its synced assets.",
     },
@@ -139,7 +139,7 @@ export const translations = {
         bitopro: "幣託 (BitoPro)",
         lastSynced: "上次同步",
         never: "從未同步",
-        readOnlyTip: "提示：請使用「唯讀」API 金鑰以確保安全。",
+        readOnlyTip: "提示：請使用「唯讀」API 金鑰。注意：派網 API 目前不支援同步機器人或理財帳戶中的資產。",
         exchangeSyncSuccess: "交易所餘額已更新！",
         confirmDeleteExchange: "確定要移除此連線嗎？這也會同時移除同步進來的資產。",
     }
