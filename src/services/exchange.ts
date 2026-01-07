@@ -83,17 +83,20 @@ export const exchangeService = {
 
         return (data.data?.balances || [])
             .filter((b: any) => parseFloat(b.free) + parseFloat(b.frozen) > 0)
-            .map((b: any) => ({
-                recordId: `pionex-${b.coin}-${Date.now()}`,
-                symbol: b.coin,
-                name: b.coin,
-                type: 'crypto',
-                market: 'Crypto',
-                quantity: parseFloat(b.free) + parseFloat(b.frozen),
-                cost: 0,
-                lastUpdated: Date.now(),
-                source: 'pionex'
-            }));
+            .map((b: any) => {
+                const coin = b.coin.toUpperCase();
+                return {
+                    recordId: `pionex-${coin}-${Date.now()}`,
+                    symbol: coin.includes('-') ? coin : `${coin}-USD`,
+                    name: coin,
+                    type: 'crypto',
+                    market: 'Crypto',
+                    quantity: parseFloat(b.free) + parseFloat(b.frozen),
+                    cost: 0,
+                    lastUpdated: Date.now(),
+                    source: 'pionex'
+                };
+            });
     },
 
     async fetchBitoPro(key: string, secret: string): Promise<Omit<Asset, 'id'>[]> {
@@ -115,17 +118,21 @@ export const exchangeService = {
 
         return (data.data || [])
             .filter((b: any) => parseFloat(b.amount) > 0)
-            .map((b: any) => ({
-                recordId: `bitopro-${b.currency}-${Date.now()}`,
-                symbol: b.currency.toUpperCase(),
-                name: b.currency.toUpperCase(),
-                type: 'crypto',
-                market: 'Crypto',
-                quantity: parseFloat(b.amount),
-                cost: 0,
-                lastUpdated: Date.now(),
-                source: 'bitopro'
-            }));
+            .map((b: any) => {
+                const currency = b.currency.toUpperCase();
+                const isTwd = currency === 'TWD';
+                return {
+                    recordId: `bitopro-${currency}-${Date.now()}`,
+                    symbol: isTwd ? 'TWD' : (currency.includes('-') ? currency : `${currency}-USD`),
+                    name: currency,
+                    type: isTwd ? 'stock' : 'crypto',
+                    market: isTwd ? 'TW' : 'Crypto',
+                    quantity: parseFloat(b.amount),
+                    cost: 0,
+                    lastUpdated: Date.now(),
+                    source: 'bitopro'
+                };
+            });
     },
 
     async deleteExchange(id: number, exchangeName: string) {

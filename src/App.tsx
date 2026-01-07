@@ -331,11 +331,20 @@ function App() {
     setSyncStatus("Refreshing...");
 
     try {
-      // 1. Refresh Prices
+      setSyncStatus("Syncing exchanges...");
+      const configs = await db.exchangeConfigs.toArray();
+      for (const config of configs) {
+        try {
+          await exchangeService.syncBalances(config);
+        } catch (e) {
+          console.error(`Failed to sync ${config.exchangeName}:`, e);
+        }
+      }
+
+      setSyncStatus("Refreshing prices...");
+      await fetchExchangeRate();
       const allAssets = await db.assets.toArray();
       const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
-
-      await fetchExchangeRate();
 
       if (uniqueSymbols.length > 0) {
         const prices = await priceService.fetchPrices(uniqueSymbols);
@@ -351,16 +360,6 @@ function App() {
               });
             }
           }
-        }
-      }
-
-      // 2. Sync Exchanges
-      const configs = await db.exchangeConfigs.toArray();
-      for (const config of configs) {
-        try {
-          await exchangeService.syncBalances(config);
-        } catch (e) {
-          console.error(`Failed to sync ${config.exchangeName}:`, e);
         }
       }
 

@@ -45,6 +45,10 @@ export const priceService = {
 
         for (const symbol of symbols) {
             const sanitized = symbol.trim().split(/\s+/)[0];
+            if (sanitized === 'USD' || sanitized === 'USD-USD' || sanitized === 'TWD') {
+                results.push({ symbol, price: 1 });
+                continue;
+            }
             const timestamp = Date.now();
             const yahooSymbol = sanitized === 'BTC' ? 'BTC-USD' : sanitized === 'ETH' ? 'ETH-USD' : sanitized === 'SOL' ? 'SOL-USD' : sanitized;
 

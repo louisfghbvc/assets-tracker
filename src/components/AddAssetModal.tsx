@@ -67,6 +67,8 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
 
         if (market === 'TW' && !finalSymbol.includes('.')) {
             finalSymbol = `${finalSymbol}.TW`;
+        } else if (market === 'Crypto' && !finalSymbol.includes('-')) {
+            finalSymbol = `${finalSymbol}-USD`;
         }
 
         await db.assets.add({
