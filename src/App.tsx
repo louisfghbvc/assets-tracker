@@ -13,7 +13,8 @@ import {
   Trash2,
   GanttChartSquare,
   Eye,
-  EyeOff
+  EyeOff,
+  Pencil
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -31,6 +32,7 @@ import { syncService } from "./services/sync";
 import { priceService } from "./services/price";
 import { exchangeService } from "./services/exchange";
 import AddAssetModal from "./components/AddAssetModal";
+import EditAssetModal from "./components/EditAssetModal";
 import { translations, Language } from "./translations";
 
 function App() {
@@ -42,6 +44,8 @@ function App() {
 
   const [syncStatus, setSyncStatus] = useState<string>("");
   const [exchangeRate, setExchangeRate] = useState<number>(32.5);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<any>(null);
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'settings'>('assets');
@@ -662,29 +666,42 @@ function App() {
                               <span className="record-cost"> {t('at')} {displayValue(item.cost, '$')}</span>
                               <span className="record-source"> ({item.source === 'manual' ? t('manual') : t(item.source as any)})</span>
                             </div>
-                            <button
-                              className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (!(await requireAuth())) return;
-                                if (deletingRecordId === item.id) {
-                                  if (item.id) handleDeleteAsset(item.id);
-                                  setDeletingRecordId(null);
-                                } else {
-                                  setDeletingRecordId(item.id || null);
-                                  setTimeout(() => {
-                                    setDeletingRecordId(curr => curr === item.id ? null : curr);
-                                  }, 3000);
-                                }
-                              }}
-                              title={deletingRecordId === item.id ? t('confirmDeletion') : t('deleteRecord')}
-                            >
-                              {deletingRecordId === item.id ? (
-                                <span className="confirm-text-small">{t('confirm')}</span>
-                              ) : (
-                                <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>✕</span>
-                              )}
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                className="edit-item-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingAsset(item);
+                                  setIsEditModalOpen(true);
+                                }}
+                                title={t('editAsset')}
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!(await requireAuth())) return;
+                                  if (deletingRecordId === item.id) {
+                                    if (item.id) handleDeleteAsset(item.id);
+                                    setDeletingRecordId(null);
+                                  } else {
+                                    setDeletingRecordId(item.id || null);
+                                    setTimeout(() => {
+                                      setDeletingRecordId(curr => curr === item.id ? null : curr);
+                                    }, 3000);
+                                  }
+                                }}
+                                title={deletingRecordId === item.id ? t('confirmDeletion') : t('deleteRecord')}
+                              >
+                                {deletingRecordId === item.id ? (
+                                  <span className="confirm-text-small">{t('confirm')}</span>
+                                ) : (
+                                  <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>✕</span>
+                                )}
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -861,6 +878,13 @@ function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAssetAdded={() => handleRefresh()}
+        t={t}
+      />
+
+      <EditAssetModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        asset={editingAsset}
         t={t}
       />
 

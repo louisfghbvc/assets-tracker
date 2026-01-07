@@ -1,15 +1,6 @@
-# assets-ui Specification
+# assets-ui Specification Delta
 
-## Purpose
-TBD - created by archiving change show-exchange-balances-ui. Update Purpose after archive.
-## Requirements
-### Requirement: Asset List Display
-The system SHALL list all assets with their source identifiers.
-
-#### Scenario: Visual Badge Tooltip
-- **GIVEN** an asset synced from an exchange
-- **WHEN** the user hovers over the 'P' or 'B' badge
-- **THEN** a tooltip MUST appear explaining the source (e.g. "Pionex", "BitoPro").
+## ADDED Requirements
 
 ### Requirement: Asset Detail Editing
 The system SHALL allow users to modify the properties of existing assets to correct errors or update cost basis information.
@@ -34,4 +25,3 @@ The system SHALL allow users to modify the properties of existing assets to corr
 +- **WHEN** the user performs a cloud restoration
 +- **THEN** the system MUST save it to the local database as `BTC-USD`.
 +
-

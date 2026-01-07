@@ -71,6 +71,9 @@ export const translations = {
         readOnlyTip: "Tip: Use Read-Only API keys. Note that Pionex API currently does NOT sync assets held in bots or earn accounts.",
         exchangeSyncSuccess: "Exchange balances updated!",
         confirmDeleteExchange: "Remove this connection? This will also remove its synced assets.",
+        editAsset: "Edit Asset",
+        saveChanges: "Save Changes",
+        quantityReadOnly: "Quantity is managed by the exchange",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -142,5 +145,8 @@ export const translations = {
         readOnlyTip: "提示：請使用「唯讀」API 金鑰。注意：派網 API 目前不支援同步機器人或理財帳戶中的資產。",
         exchangeSyncSuccess: "交易所餘額已更新！",
         confirmDeleteExchange: "確定要移除此連線嗎？這也會同時移除同步進來的資產。",
+        editAsset: "編輯資產內容",
+        saveChanges: "儲存變更",
+        quantityReadOnly: "同步資產的數量由交易所提供",
     }
 };

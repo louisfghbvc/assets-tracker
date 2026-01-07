@@ -37,12 +37,23 @@ export const exchangeService = {
         const { exchangeName, apiKey, apiSecret } = config;
 
         try {
+            // Snapshot existing costs to persist them
+            const existingAssets = await db.assets.where('source').equals(exchangeName).toArray();
+            const costMap = new Map<string, number>(existingAssets.map(a => [a.symbol, a.cost]));
+
             let assetsToUpdate: Omit<Asset, 'id'>[] = [];
 
             if (exchangeName === 'pionex') {
                 assetsToUpdate = await this.fetchPionex(apiKey, apiSecret);
             } else if (exchangeName === 'bitopro') {
                 assetsToUpdate = await this.fetchBitoPro(apiKey, apiSecret);
+            }
+
+            // Restore existing costs
+            for (const asset of assetsToUpdate) {
+                if (costMap.has(asset.symbol)) {
+                    asset.cost = costMap.get(asset.symbol)!;
+                }
             }
 
             // Update Database

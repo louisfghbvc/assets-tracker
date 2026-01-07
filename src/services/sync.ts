@@ -134,9 +134,15 @@ export const syncService = {
                 type = (market === "Crypto") ? "crypto" : "stock";
             }
 
+            // Normalization: Ensure Crypto symbols are SYMBOL-USD format
+            let normalizedSymbol = symbol;
+            if (market === "Crypto" && !normalizedSymbol.includes("-")) {
+                normalizedSymbol = `${normalizedSymbol}-USD`;
+            }
+
             return {
                 recordId,
-                symbol,
+                symbol: normalizedSymbol,
                 name: (colMap.name !== undefined ? row[colMap.name]?.toString().trim() : null) || symbol,
                 type: type as 'stock' | 'crypto' | 'other',
                 market: market as 'TW' | 'US' | 'Crypto',
