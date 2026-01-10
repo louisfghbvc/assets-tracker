@@ -709,6 +709,23 @@ body {
   justify-content: center;
   color: var(--primary);
   border: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.asset-logo-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  padding: 0;
+}
+
+.asset-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .asset-info {

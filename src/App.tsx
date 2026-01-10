@@ -35,6 +35,56 @@ import AddAssetModal from "./components/AddAssetModal";
 import EditAssetModal from "./components/EditAssetModal";
 import { translations, Language } from "./translations";
 
+const failedLogos = new Set<string>();
+
+const AssetLogo = ({ symbol, market, fallbackIcon }: { symbol: string, market: string, fallbackIcon: React.ReactNode }) => {
+  const [hasError, setHasError] = useState(false);
+
+  const logoUrl = useMemo(() => {
+    const s = symbol.includes(':') ? symbol.split(':')[1].trim().toUpperCase() : symbol.trim().toUpperCase();
+    const cleanS = s.replace('.TW', '').replace('.TWO', '').trim();
+    const cacheKey = `${market}:${cleanS}`;
+
+    if (failedLogos.has(cacheKey) || hasError) return null;
+
+    if (market === 'TW') {
+      // Skip ETFs (usually starting with 00) for Taiwan to reduce noise
+      if (cleanS.startsWith('00')) return null;
+      // User verified that financialmodelingprep with .TW.png works for 2330.TW
+      return `https://financialmodelingprep.com/image-stock/${cleanS}.TW.png`;
+    }
+
+    if (market === 'US') {
+      return `https://financialmodelingprep.com/image-stock/${cleanS}.png`;
+    }
+
+    if (market === 'Crypto') {
+      const cryptoSymbol = s.split('-')[0].toLowerCase();
+      return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${cryptoSymbol}.png`;
+    }
+
+    return null;
+  }, [symbol, market, hasError]);
+
+  if (!logoUrl) return <>{fallbackIcon}</>;
+
+  return (
+    <div className="asset-logo-container">
+      <img
+        src={logoUrl}
+        alt={symbol}
+        onError={() => {
+          const s = symbol.includes(':') ? symbol.split(':')[1].trim().toUpperCase() : symbol.trim().toUpperCase();
+          const cleanS = s.replace('.TW', '').replace('.TWO', '').trim();
+          failedLogos.add(`${market}:${cleanS}`);
+          setHasError(true);
+        }}
+        className="asset-logo-img"
+      />
+    </div>
+  );
+};
+
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -606,7 +656,11 @@ function App() {
                 >
                   <div className="asset-summary">
                     <div className="asset-icon">
-                      {asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
+                      <AssetLogo
+                        symbol={asset.symbol}
+                        market={asset.market}
+                        fallbackIcon={asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
+                      />
                     </div>
                     <div className="asset-info">
                       <p className="asset-name">{asset.name}</p>
