@@ -1,8 +1,7 @@
-# price-consistency Specification
+# price-consistency Specification (Auto-Refresh)
 
-## Purpose
-TBD - created by archiving change fix-crypto-price-flicker. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: Atomic Balance and Price Sync
 The system SHALL ensure that after a full refresh, all assets (including those synced from external exchanges) display current market prices immediately, without a period of time showing $0.
 
@@ -11,4 +10,3 @@ The system SHALL ensure that after a full refresh, all assets (including those s
 - **WHEN** the application is opened or reloaded
 - **THEN** it MUST automatically initiate a refresh of all asset prices and exchange balances.
 - **AND** the sync status MUST indicate that a refresh is in progress.
-

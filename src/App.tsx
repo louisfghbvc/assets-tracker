@@ -56,6 +56,7 @@ function App() {
   const [hideValues, setHideValues] = useState<boolean>(() => {
     return localStorage.getItem("hideValues") === "true";
   });
+  const [hasInitialRefreshed, setHasInitialRefreshed] = useState(false);
 
   // Persist hideValues
   useEffect(() => {
@@ -102,6 +103,14 @@ function App() {
       }
     }
   }, []);
+
+  // Auto-refresh on startup when token is available
+  useEffect(() => {
+    if (accessToken && !hasInitialRefreshed) {
+      setHasInitialRefreshed(true);
+      handleRefresh();
+    }
+  }, [accessToken, hasInitialRefreshed]);
 
   const fetchUserProfile = async (token: string) => {
     try {
