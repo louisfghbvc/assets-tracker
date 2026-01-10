@@ -35,36 +35,57 @@ async function hmacSha384(secret: string, message: string) {
 export const exchangeService = {
     async syncBalances(config: ExchangeConfig) {
         const { exchangeName, apiKey, apiSecret } = config;
+        const normalizedSource = exchangeName.toLowerCase().trim();
 
         try {
-            // Snapshot existing costs to persist them
-            const existingAssets = await db.assets.where('source').equals(exchangeName).toArray();
-            const costMap = new Map<string, number>(existingAssets.map(a => [a.symbol, a.cost]));
-
+            // 1. Fetch data from exchange FIRST (outside transaction to avoid blocking)
             let assetsToUpdate: Omit<Asset, 'id'>[] = [];
-
-            if (exchangeName === 'pionex') {
+            if (normalizedSource === 'pionex') {
                 assetsToUpdate = await this.fetchPionex(apiKey, apiSecret);
-            } else if (exchangeName === 'bitopro') {
+            } else if (normalizedSource === 'bitopro') {
                 assetsToUpdate = await this.fetchBitoPro(apiKey, apiSecret);
             }
 
-            // Restore existing costs
-            for (const asset of assetsToUpdate) {
-                if (costMap.has(asset.symbol)) {
-                    asset.cost = costMap.get(asset.symbol)!;
+            // 2. Perform DB update in a Transaction
+            await db.transaction('rw', db.assets, db.exchangeConfigs, async () => {
+                // Snapshot existing costs to persist them
+                const existingAssets = await db.assets.where('source').equals(normalizedSource).toArray();
+                // Also check for legacy case-sensitive sources during snapshot
+                const legacySource = normalizedSource === 'bitopro' ? 'BitoPro' : (normalizedSource === 'pionex' ? 'Pionex' : null);
+                if (legacySource) {
+                    const legacyAssets = await db.assets.where('source').equals(legacySource).toArray();
+                    existingAssets.push(...legacyAssets);
                 }
-            }
 
-            // Update Database
-            await db.assets.where('source').equals(exchangeName).delete();
-            if (assetsToUpdate.length > 0) {
-                await db.assets.bulkAdd(assetsToUpdate as Asset[]);
-            }
+                const costMap = new Map<string, number>(existingAssets.map(a => [a.symbol.toUpperCase(), a.cost]));
 
-            if (config.id) {
-                await db.exchangeConfigs.update(config.id, { lastSynced: Date.now() });
-            }
+                // Restore existing costs
+                for (const asset of assetsToUpdate) {
+                    const upperSymbol = asset.symbol.toUpperCase();
+                    if (costMap.has(upperSymbol)) {
+                        asset.cost = costMap.get(upperSymbol)!;
+                    }
+                }
+
+                // Delete OLD records (normalized and legacy)
+                await db.assets.where('source').equals(normalizedSource).delete();
+                if (legacySource) {
+                    await db.assets.where('source').equals(legacySource).delete();
+                }
+
+                // Add NEW records
+                if (assetsToUpdate.length > 0) {
+                    await db.assets.bulkAdd(assetsToUpdate as Asset[]);
+                }
+
+                // Update last synced time
+                if (config.id) {
+                    await db.exchangeConfigs.update(config.id, {
+                        lastSynced: Date.now(),
+                        exchangeName: normalizedSource as any
+                    });
+                }
+            });
 
             return { success: true, count: assetsToUpdate.length };
         } catch (error: any) {
@@ -92,22 +113,28 @@ export const exchangeService = {
         const data = await res.json();
         if (data.result === false) throw new Error(data.message || 'Pionex API error');
 
-        return (data.data?.balances || [])
-            .filter((b: any) => parseFloat(b.free) + parseFloat(b.frozen) > 0)
-            .map((b: any) => {
+        const balances = (data.data?.balances || []) as any[];
+        const aggregated = new Map<string, number>();
+
+        balances.forEach(b => {
+            const amount = parseFloat(b.free) + parseFloat(b.frozen);
+            if (amount > 0) {
                 const coin = b.coin.toUpperCase();
-                return {
-                    recordId: `pionex-${coin}-${Date.now()}`,
-                    symbol: coin.includes('-') ? coin : `${coin}-USD`,
-                    name: coin,
-                    type: 'crypto',
-                    market: 'Crypto',
-                    quantity: parseFloat(b.free) + parseFloat(b.frozen),
-                    cost: 0,
-                    lastUpdated: Date.now(),
-                    source: 'pionex'
-                };
-            });
+                aggregated.set(coin, (aggregated.get(coin) || 0) + amount);
+            }
+        });
+
+        return Array.from(aggregated.entries()).map(([coin, total]) => ({
+            recordId: `pionex-${coin.toLowerCase()}`,
+            symbol: coin.includes('-') ? coin : `${coin}-USD`,
+            name: coin,
+            type: 'crypto',
+            market: 'Crypto',
+            quantity: total,
+            cost: 0,
+            lastUpdated: Date.now(),
+            source: 'pionex'
+        }));
     },
 
     async fetchBitoPro(key: string, secret: string): Promise<Omit<Asset, 'id'>[]> {
@@ -127,23 +154,31 @@ export const exchangeService = {
         const data = await res.json();
         if (data.error) throw new Error(data.error || 'BitoPro API error');
 
-        return (data.data || [])
-            .filter((b: any) => parseFloat(b.amount) > 0)
-            .map((b: any) => {
+        const balances = (data.data || []) as any[];
+        const aggregated = new Map<string, number>();
+
+        balances.forEach(b => {
+            const amount = parseFloat(b.amount);
+            if (amount > 0) {
                 const currency = b.currency.toUpperCase();
-                const isTwd = currency === 'TWD';
-                return {
-                    recordId: `bitopro-${currency}-${Date.now()}`,
-                    symbol: isTwd ? 'TWD' : (currency.includes('-') ? currency : `${currency}-USD`),
-                    name: currency,
-                    type: isTwd ? 'stock' : 'crypto',
-                    market: isTwd ? 'TW' : 'Crypto',
-                    quantity: parseFloat(b.amount),
-                    cost: 0,
-                    lastUpdated: Date.now(),
-                    source: 'bitopro'
-                };
-            });
+                aggregated.set(currency, (aggregated.get(currency) || 0) + amount);
+            }
+        });
+
+        return Array.from(aggregated.entries()).map(([currency, total]) => {
+            const isTwd = currency === 'TWD';
+            return {
+                recordId: `bitopro-${currency.toLowerCase()}`,
+                symbol: isTwd ? 'TWD' : (currency.includes('-') ? currency : `${currency}-USD`),
+                name: currency,
+                type: isTwd ? 'stock' : 'crypto',
+                market: isTwd ? 'TW' : 'Crypto',
+                quantity: total,
+                cost: 0,
+                lastUpdated: Date.now(),
+                source: 'bitopro'
+            };
+        });
     },
 
     async deleteExchange(id: number, exchangeName: string) {

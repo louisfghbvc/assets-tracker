@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   TrendingUp,
   Wallet,
@@ -154,9 +154,12 @@ function App() {
     }
   }, []);
 
+  const initialRefreshStarted = useRef(false);
+
   // Auto-refresh on startup when token is available
   useEffect(() => {
-    if (accessToken && !hasInitialRefreshed) {
+    if (accessToken && !hasInitialRefreshed && !initialRefreshStarted.current) {
+      initialRefreshStarted.current = true;
       setHasInitialRefreshed(true);
       handleRefresh();
     }
