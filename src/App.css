@@ -37,6 +37,13 @@ body {
   }
 }
 
+@media (max-width: 320px) {
+  .app-container {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
 /* Background Decoration */
 .app-container::before {
   content: '';
@@ -421,6 +428,12 @@ body {
   }
 }
 
+@media (max-width: 360px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--glass-border);
@@ -648,12 +661,6 @@ body {
   flex-wrap: nowrap;
 }
 
-@media (max-width: 350px) {
-  .asset-summary {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-}
 
 .asset-item:hover {
   transform: translateY(-2px);
@@ -759,8 +766,68 @@ body {
   }
 
   .delete-item-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .asset-icon {
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .asset-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 350px) {
+  .asset-summary {
+    display: grid;
+    grid-template-areas:
+      "icon info actions"
+      "icon market actions";
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px;
+  }
+
+  .asset-icon {
+    grid-area: icon;
+    align-self: center;
+  }
+
+  .asset-info {
+    grid-area: info;
+    max-width: 100% !important;
+    flex: none;
+  }
+
+  .asset-market {
+    grid-area: market;
+    text-align: left !important;
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .asset-actions {
+    grid-area: actions;
+    margin-left: 0;
+    align-self: center;
+  }
+
+  .asset-price {
+    font-size: 1.1rem;
+    text-align: left;
+  }
+
+  .asset-value-group {
+    align-items: flex-start !important;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -1412,24 +1479,6 @@ input:focus {
 @media (max-width: 350px) {
   .modal-content {
     padding: 24px 16px;
-  }
-
-  .asset-market {
-    width: 100%;
-    text-align: left;
-    order: 3;
-    padding-left: 56px;
-    /* Align with info text */
-    margin-top: -4px;
-  }
-
-  .asset-price {
-    font-size: 1rem;
-  }
-
-  .asset-actions {
-    margin-left: auto;
-    order: 2;
   }
 }
 
