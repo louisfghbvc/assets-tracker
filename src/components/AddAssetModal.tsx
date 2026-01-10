@@ -119,7 +119,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                                         setSuggestions([]);
                                     }}
                                 >
-                                    {m}
+                                    {t(m === 'TW' ? 'twMarket' : m === 'US' ? 'usMarket' : 'cryptoMarket')}
                                 </button>
                             ))}
                         </div>

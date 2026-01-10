@@ -303,7 +303,7 @@ function App() {
     if (!(await requireAuth())) return;
     try {
       await db.assets.delete(id);
-      setSyncStatus("Record deleted");
+      setSyncStatus(t('recordDeleted'));
       setTimeout(() => setSyncStatus(""), 2000);
     } catch (err) {
       console.error("Failed to delete record:", err);
@@ -317,7 +317,7 @@ function App() {
       for (const asset of assetsToDelete) {
         if (asset.id) await db.assets.delete(asset.id);
       }
-      setSyncStatus(`Cleared all ${symbol} records`);
+      setSyncStatus(t('allRecordsCleared'));
       setDeletingSymbol(null);
       setTimeout(() => setSyncStatus(""), 3000);
     } catch (err) {
@@ -342,7 +342,7 @@ function App() {
 
   const handleCloudUpload = async () => {
     if (!(await requireAuth())) return;
-    setSyncStatus("Uploading to cloud...");
+    setSyncStatus(t('uploading'));
     performUpload();
   };
 
@@ -350,16 +350,16 @@ function App() {
     const token = tokenOverride || accessToken;
     if (!token) return;
 
-    setSyncStatus("Backing up to cloud...");
+    setSyncStatus(t('backingUp'));
     const result = await syncService.upload(token);
     if (result.success) {
-      setSyncStatus(`Backup successful! (${result.count} assets)`);
+      setSyncStatus(`${t('backupSuccess')} (${result.count} ${t('assets')})`);
     } else {
       if (result.error === "UNAUTHORIZED") {
         handleLogout();
         setSyncStatus(t('sessionExpired'));
       } else {
-        setSyncStatus(`Backup failed: ${result.error}`);
+        setSyncStatus(`${t('backupFailed')}: ${result.error}`);
       }
     }
     setTimeout(() => setSyncStatus(""), 3000);
@@ -367,7 +367,7 @@ function App() {
 
   const handleCloudDownload = async () => {
     if (!(await requireAuth())) return;
-    if (window.confirm("Restore from cloud? This will REPLACE all your local data.")) {
+    if (window.confirm(t('restoreConfirm'))) {
       performDownload();
     }
   };
@@ -376,10 +376,10 @@ function App() {
     const token = tokenOverride || accessToken;
     if (!token) return;
 
-    setSyncStatus("Restoring from cloud...");
+    setSyncStatus(t('restoring'));
     const result = await syncService.download(token);
     if (result.success) {
-      setSyncStatus(`Restore successful! (${result.count} assets)`);
+      setSyncStatus(`${t('restoreSuccess')} (${result.count} ${t('assets')})`);
       await handleRefresh();
     } else {
       if (result.error === "UNAUTHORIZED") {
@@ -388,10 +388,10 @@ function App() {
           setSyncStatus(t('sessionExpired'));
         } else {
           console.warn("Sync failed with UNAUTHORIZED, but logout suppressed (initial login).");
-          setSyncStatus("Sync failed. Please try again manually.");
+          setSyncStatus(t('restoreFailed'));
         }
       } else {
-        setSyncStatus(`Restore failed: ${result.error}`);
+        setSyncStatus(`${t('restoreFailed')}: ${result.error}`);
       }
     }
     setTimeout(() => setSyncStatus(""), 3000);
@@ -408,10 +408,10 @@ function App() {
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    setSyncStatus("Refreshing...");
+    setSyncStatus(t('refreshing'));
 
     try {
-      setSyncStatus("Syncing exchanges...");
+      setSyncStatus(t('syncingExchanges'));
       const configs = await db.exchangeConfigs.toArray();
       for (const config of configs) {
         try {
@@ -421,7 +421,7 @@ function App() {
         }
       }
 
-      setSyncStatus("Refreshing prices...");
+      setSyncStatus(t('refreshingPrices'));
       await fetchExchangeRate();
       const allAssets = await db.assets.toArray();
       const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
@@ -443,10 +443,10 @@ function App() {
         }
       }
 
-      setSyncStatus("Refresh complete!");
+      setSyncStatus(t('refreshComplete'));
     } catch (e) {
       console.error("Refresh failed:", e);
-      setSyncStatus("Refresh failed.");
+      setSyncStatus(t('refreshFailed'));
     } finally {
       setIsRefreshing(false);
       setTimeout(() => setSyncStatus(""), 3000);
@@ -539,11 +539,11 @@ function App() {
           </div>
           <div className="header-actions">
             {exchangeRate > 1 && (
-              <span className="exchange-rate-badge">USD/TWD: {exchangeRate.toFixed(2)}</span>
+              <span className="exchange-rate-badge">{t('exchangeRate')} USD/TWD: {exchangeRate.toFixed(2)}</span>
             )}
             {/* syncStatus moved to root for Toast positioning */}
-            <button className="action-btn lang-btn" onClick={toggleLanguage} data-hint={language === 'zh' ? 'Switch to English' : '切換至中文'}>
-              <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>{language === 'zh' ? 'EN' : '中'}</span>
+            <button className="action-btn lang-btn active" onClick={toggleLanguage} data-hint={language === 'zh' ? 'Switch to English' : '切換至中文'}>
+              <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>{language === 'zh' ? '中文' : 'EN'}</span>
             </button>
             <button className="action-btn" onClick={handleCloudUpload} data-hint={t('backupToCloud')}>
               <CloudUpload size={24} />
@@ -609,349 +609,355 @@ function App() {
             <span className="stat-label">{t('totalProfit')}</span>
           </div>
         </div>
-      </header>
+      </header >
 
       {/* Conditional Rendering based on Tab */}
-      {activeTab === 'assets' && (
-        <>
-          {/* Quick Stats */}
-          <section className="stats-grid animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            {marketStats.map((stat) => (
-              <div
-                key={stat.market}
-                className={`stat-card ${marketFilter === stat.market ? 'active' : ''}`}
-                onClick={() => setMarketFilter(prev => prev === stat.market ? null : stat.market)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className={`stat-icon ${stat.market.toLowerCase()}`}><ArrowUpRight size={20} /></div>
-                <div className="stat-card-content">
-                  <div className="stat-card-header">
-                    <p className="stat-card-label">{stat.market === 'TW' ? t('twStocks') : stat.market === 'US' ? t('usStocks') : t('crypto')}</p>
-                    <span className={`stat-card-pct ${stat.profitPercent >= 0 ? 'positive' : 'negative'}`}>
-                      {compactDisplayValue(Math.abs(stat.profit), stat.profit >= 0 ? '+$' : '$')} ({stat.profitPercent >= 0 ? '+' : ''}{stat.profitPercent.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <p className="stat-card-value">
-                    {hideValues ? '****' : `$${(stat.totalValue / (stat.market === 'TW' ? 1000 : 1)).toFixed(1)}${stat.market === 'TW' ? 'k' : ''}`}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </section>
-
-          {/* Assets List */}
-          <section className="assets-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="section-header">
-              <h2>{t('yourAssets')}</h2>
-              <button className="add-btn" onClick={async () => {
-                if (await requireAuth()) setIsModalOpen(true);
-              }}>
-                <Plus size={24} />
-              </button>
-            </div>
-
-            <div className="assets-list">
-              {mergedAssets?.filter(a => !marketFilter || a.market === marketFilter).map((asset) => (
+      {
+        activeTab === 'assets' && (
+          <>
+            {/* Quick Stats */}
+            <section className="stats-grid animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              {marketStats.map((stat) => (
                 <div
-                  key={asset.symbol}
-                  className={`asset-item ${expandedSymbol === asset.symbol ? 'expanded' : ''}`}
-                  onClick={() => setExpandedSymbol(expandedSymbol === asset.symbol ? null : asset.symbol)}
+                  key={stat.market}
+                  className={`stat-card ${marketFilter === stat.market ? 'active' : ''}`}
+                  onClick={() => setMarketFilter(prev => prev === stat.market ? null : stat.market)}
+                  style={{ cursor: 'pointer' }}
                 >
-                  <div className="asset-summary">
-                    <div className="asset-icon">
-                      <AssetLogo
-                        symbol={asset.symbol}
-                        market={asset.market}
-                        fallbackIcon={asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
-                      />
+                  <div className={`stat-icon ${stat.market.toLowerCase()}`}><ArrowUpRight size={20} /></div>
+                  <div className="stat-card-content">
+                    <div className="stat-card-header">
+                      <p className="stat-card-label">{stat.market === 'TW' ? t('twStocks') : stat.market === 'US' ? t('usStocks') : t('crypto')}</p>
+                      <span className={`stat-card-pct ${stat.profitPercent >= 0 ? 'positive' : 'negative'}`}>
+                        {compactDisplayValue(Math.abs(stat.profit), stat.profit >= 0 ? '+$' : '$')} ({stat.profitPercent >= 0 ? '+' : ''}{stat.profitPercent.toFixed(1)}%)
+                      </span>
                     </div>
-                    <div className="asset-info">
-                      <p className="asset-name">{asset.name}</p>
-                      <p className="asset-symbol">{asset.symbol}</p>
-                    </div>
-                    <div className="asset-market">
-                      <div className="asset-value-group">
-                        <p className="asset-price">
-                          {displayValue(asset.totalValue, '$')}
-                          <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {asset.items.some(i => i.source === 'pionex' || i.source === 'bitopro') && (
-                            <span
-                              className="source-badge"
-                              title={asset.items.some(i => i.source === 'pionex') && asset.items.some(i => i.source === 'bitopro')
-                                ? `${t('pionex')} & ${t('bitopro')}`
-                                : asset.items.find(i => i.source === 'pionex') ? t('pionex') : t('bitopro')}
-                            >
-                              {asset.items.find(i => i.source === 'pionex') ? 'P' : 'B'}
+                    <p className="stat-card-value">
+                      {hideValues ? '****' : `$${(stat.totalValue / (stat.market === 'TW' ? 1000 : 1)).toFixed(1)}${stat.market === 'TW' ? 'k' : ''}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            {/* Assets List */}
+            <section className="assets-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <div className="section-header">
+                <h2>{t('yourAssets')}</h2>
+                <button className="add-btn" onClick={async () => {
+                  if (await requireAuth()) setIsModalOpen(true);
+                }}>
+                  <Plus size={24} />
+                </button>
+              </div>
+
+              <div className="assets-list">
+                {mergedAssets?.filter(a => !marketFilter || a.market === marketFilter).map((asset) => (
+                  <div
+                    key={asset.symbol}
+                    className={`asset-item ${expandedSymbol === asset.symbol ? 'expanded' : ''}`}
+                    onClick={() => setExpandedSymbol(expandedSymbol === asset.symbol ? null : asset.symbol)}
+                  >
+                    <div className="asset-summary">
+                      <div className="asset-icon">
+                        <AssetLogo
+                          symbol={asset.symbol}
+                          market={asset.market}
+                          fallbackIcon={asset.market === 'TW' ? <TrendingUp size={24} /> : asset.market === 'US' ? <TrendingUp size={24} /> : <Wallet size={24} />}
+                        />
+                      </div>
+                      <div className="asset-info">
+                        <p className="asset-name">{asset.name}</p>
+                        <p className="asset-symbol">{asset.symbol}</p>
+                      </div>
+                      <div className="asset-market">
+                        <div className="asset-value-group">
+                          <p className="asset-price">
+                            {displayValue(asset.totalValue, '$')}
+                            <span className="currency-unit"> {asset.market === 'TW' ? 'TWD' : 'USD'}</span>
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {asset.items.some(i => i.source === 'pionex' || i.source === 'bitopro') && (
+                              <span
+                                className="source-badge"
+                                title={asset.items.some(i => i.source === 'pionex') && asset.items.some(i => i.source === 'bitopro')
+                                  ? `${t('pionex')} & ${t('bitopro')}`
+                                  : asset.items.find(i => i.source === 'pionex') ? t('pionex') : t('bitopro')}
+                              >
+                                {asset.items.find(i => i.source === 'pionex') ? 'P' : 'B'}
+                              </span>
+                            )}
+                            <span className={`asset-profit-badge ${asset.profitPercent >= 0 ? 'positive' : 'negative'}`}>
+                              {displayValue(Math.abs(asset.profit), asset.profit >= 0 ? '+$' : '$')} ({asset.profitPercent >= 0 ? '+' : ''}{asset.profitPercent.toFixed(1)}%)
                             </span>
+                          </div>
+                        </div>
+                        <p className="market-per-unit">
+                          {displayValue(asset.currentPrice || 0, '$')} {t('perUnit')}
+                        </p>
+                      </div>
+                      <div className="asset-actions">
+                        <button
+                          className={`delete-item-btn ${deletingSymbol === asset.symbol ? 'confirm-mode' : ''}`}
+                          title={deletingSymbol === asset.symbol ? t('confirmDeletion') : t('deleteAsset')}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!(await requireAuth())) return;
+                            if (deletingSymbol === asset.symbol) {
+                              handleDeleteSymbol(asset.symbol);
+                            } else {
+                              setDeletingSymbol(asset.symbol);
+                              setTimeout(() => {
+                                setDeletingSymbol(current => current === asset.symbol ? null : current);
+                              }, 3000);
+                            }
+                          }}
+                        >
+                          {deletingSymbol === asset.symbol ? (
+                            <span className="confirm-text">{t('confirm')}</span>
+                          ) : (
+                            <Trash2 size={22} color="white" />
                           )}
-                          <span className={`asset-profit-badge ${asset.profitPercent >= 0 ? 'positive' : 'negative'}`}>
-                            {displayValue(Math.abs(asset.profit), asset.profit >= 0 ? '+$' : '$')} ({asset.profitPercent >= 0 ? '+' : ''}{asset.profitPercent.toFixed(1)}%)
-                          </span>
+                        </button>
+                        <ChevronRight size={20} className={`expand-chevron ${expandedSymbol === asset.symbol ? 'rotated' : ''}`} />
+                      </div>
+                    </div>
+
+                    {expandedSymbol === asset.symbol && (
+                      <div className="asset-details-expanded animate-slide-down">
+                        <div className="position-summary">
+                          <div className="summary-stat">
+                            <span className="label">{t('totalQuantity')}</span>
+                            <span className="value">{displayValue(asset.quantity)}</span>
+                          </div>
+                          <div className="summary-stat">
+                            <span className="label">{t('avgCost')}</span>
+                            <span className="value">
+                              {displayValue(asset.cost, '$')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="records-list">
+                          <p className="records-header">{t('individualRecords')}</p>
+                          {asset.items.map((item: any, idx: number) => (
+                            <div key={item.id || idx} className="record-item">
+                              <div className="record-info">
+                                <span className="record-qty">{displayValue(item.quantity)} {t('units')}</span>
+                                <span className="record-cost"> {t('at')} {displayValue(item.cost, '$')}</span>
+                                <span className="record-source"> ({item.source === 'manual' ? t('manual') : t(item.source as any)})</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                  className="edit-item-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingAsset(item);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  title={t('editAsset')}
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (!(await requireAuth())) return;
+                                    if (deletingRecordId === item.id) {
+                                      if (item.id) handleDeleteAsset(item.id);
+                                      setDeletingRecordId(null);
+                                    } else {
+                                      setDeletingRecordId(item.id || null);
+                                      setTimeout(() => {
+                                        setDeletingRecordId(curr => curr === item.id ? null : curr);
+                                      }, 3000);
+                                    }
+                                  }}
+                                  title={deletingRecordId === item.id ? t('confirmDeletion') : t('deleteRecord')}
+                                >
+                                  {deletingRecordId === item.id ? (
+                                    <span className="confirm-text-small">{t('confirm')}</span>
+                                  ) : (
+                                    <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>✕</span>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <p className="market-per-unit">
-                        {displayValue(asset.currentPrice || 0, '$')} {t('perUnit')}
+                    )}
+                  </div>
+                ))}
+                {assets?.length === 0 && (
+                  <div className="empty-state" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    <p>{t('noAssets')}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )
+      }
+
+      {
+        activeTab === 'settings' && (
+          <section className="settings-view animate-fade-in">
+            <div className="card settings-container">
+              <h2 className="view-title">{t('exchanges')}</h2>
+              <div className="exchange-list">
+                {exchangeConfigs?.map(config => (
+                  <div key={config.id} className="exchange-config-card">
+                    <div className="exchange-info">
+                      <p className="exchange-name">{t(config.exchangeName as any)}</p>
+                      <p className="exchange-sync-time">
+                        {t('lastSynced')}: {config.lastSynced ? new Date(config.lastSynced).toLocaleString() : t('never')}
                       </p>
+                      {exchangeTotals[config.exchangeName] > 0 && (
+                        <p className="exchange-balance-total">
+                          {displayValue(exchangeTotals[config.exchangeName], '$')} TWD
+                        </p>
+                      )}
                     </div>
-                    <div className="asset-actions">
+                    <div className="exchange-actions">
                       <button
-                        className={`delete-item-btn ${deletingSymbol === asset.symbol ? 'confirm-mode' : ''}`}
-                        title={deletingSymbol === asset.symbol ? t('confirmDeletion') : t('deleteAsset')}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (!(await requireAuth())) return;
-                          if (deletingSymbol === asset.symbol) {
-                            handleDeleteSymbol(asset.symbol);
-                          } else {
-                            setDeletingSymbol(asset.symbol);
-                            setTimeout(() => {
-                              setDeletingSymbol(current => current === asset.symbol ? null : current);
-                            }, 3000);
+                        className="inline-sync-btn"
+                        onClick={() => exchangeService.syncBalances(config)}
+                        title={t('syncExchange')}
+                      >
+                        <RefreshCw size={18} />
+                      </button>
+                      <button
+                        className="inline-delete-btn"
+                        onClick={() => {
+                          if (config.id && window.confirm(t('confirmDeleteExchange'))) {
+                            exchangeService.deleteExchange(config.id, config.exchangeName);
                           }
                         }}
                       >
-                        {deletingSymbol === asset.symbol ? (
-                          <span className="confirm-text">{t('confirm')}</span>
-                        ) : (
-                          <Trash2 size={22} color="white" />
-                        )}
+                        <Trash2 size={18} />
                       </button>
-                      <ChevronRight size={20} className={`expand-chevron ${expandedSymbol === asset.symbol ? 'rotated' : ''}`} />
                     </div>
                   </div>
+                ))}
+              </div>
 
-                  {expandedSymbol === asset.symbol && (
-                    <div className="asset-details-expanded animate-slide-down">
-                      <div className="position-summary">
-                        <div className="summary-stat">
-                          <span className="label">{t('totalQuantity')}</span>
-                          <span className="value">{displayValue(asset.quantity)}</span>
-                        </div>
-                        <div className="summary-stat">
-                          <span className="label">{t('avgCost')}</span>
-                          <span className="value">
-                            {displayValue(asset.cost, '$')}
-                          </span>
-                        </div>
-                      </div>
+              <div className="add-exchange-form card-sub">
+                <h3>{t('addExchange')}</h3>
+                <p className="tip">{t('readOnlyTip')}</p>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const name = formData.get('exchangeName') as 'pionex' | 'bitopro';
+                  const key = formData.get('apiKey') as string;
+                  const secret = formData.get('apiSecret') as string;
 
-                      <div className="records-list">
-                        <p className="records-header">{t('individualRecords')}</p>
-                        {asset.items.map((item: any, idx: number) => (
-                          <div key={item.id || idx} className="record-item">
-                            <div className="record-info">
-                              <span className="record-qty">{displayValue(item.quantity)} {t('units')}</span>
-                              <span className="record-cost"> {t('at')} {displayValue(item.cost, '$')}</span>
-                              <span className="record-source"> ({item.source === 'manual' ? t('manual') : t(item.source as any)})</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <button
-                                className="edit-item-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingAsset(item);
-                                  setIsEditModalOpen(true);
-                                }}
-                                title={t('editAsset')}
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              <button
-                                className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (!(await requireAuth())) return;
-                                  if (deletingRecordId === item.id) {
-                                    if (item.id) handleDeleteAsset(item.id);
-                                    setDeletingRecordId(null);
-                                  } else {
-                                    setDeletingRecordId(item.id || null);
-                                    setTimeout(() => {
-                                      setDeletingRecordId(curr => curr === item.id ? null : curr);
-                                    }, 3000);
-                                  }
-                                }}
-                                title={deletingRecordId === item.id ? t('confirmDeletion') : t('deleteRecord')}
-                              >
-                                {deletingRecordId === item.id ? (
-                                  <span className="confirm-text-small">{t('confirm')}</span>
-                                ) : (
-                                  <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>✕</span>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  if (name && key && secret) {
+                    await db.exchangeConfigs.add({
+                      exchangeName: name,
+                      apiKey: key,
+                      apiSecret: secret
+                    });
+                    (e.target as HTMLFormElement).reset();
+                  }
+                }}>
+                  <select name="exchangeName" className="settings-select" required>
+                    <option value="pionex">{t('pionex')}</option>
+                    <option value="bitopro">{t('bitopro')}</option>
+                  </select>
+                  <input name="apiKey" type="text" placeholder={t('apiKey')} className="settings-input" required />
+                  <input name="apiSecret" type="password" placeholder={t('apiSecret')} className="settings-input" required />
+                  <button type="submit" className="settings-save-btn">{t('addExchange')}</button>
+                </form>
+              </div>
+            </div>
+          </section>
+        )
+      }
+      {
+        activeTab === 'stats' && (
+          <section className="stats-view animate-fade-in">
+            <div className="card chart-container">
+              <div className="stats-header">
+                <h2 className="view-title">{t('allocation')}</h2>
+                <div className="stats-toggle">
+                  <button
+                    className={`toggle-btn ${statsView === 'market' ? 'active' : ''}`}
+                    onClick={() => setStatsView('market')}
+                  >
+                    {t('byMarket')}
+                  </button>
+                  <button
+                    className={`toggle-btn ${statsView === 'asset' ? 'active' : ''}`}
+                    onClick={() => setStatsView('asset')}
+                  >
+                    {t('byAsset')}
+                  </button>
                 </div>
-              ))}
-              {assets?.length === 0 && (
-                <div className="empty-state" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                  <p>{t('noAssets')}</p>
+              </div>
+
+              {(statsView === 'market' ? marketData.length : assetData.length) > 0 ? (
+                <div className="chart-wrapper">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RePieChart>
+                      <Pie
+                        data={statsView === 'market' ? marketData : assetData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={80}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {(statsView === 'market' ? marketData : assetData).map((_entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: 'rgba(18, 18, 23, 0.9)',
+                          border: '1px solid var(--glass-border)',
+                          borderRadius: '12px',
+                          color: '#fff'
+                        }}
+                        itemStyle={{ color: '#fff' }}
+                        formatter={(value: any) => value !== undefined ? `$${Number(value).toLocaleString()}` : ''}
+                      />
+                    </RePieChart>
+                  </ResponsiveContainer>
+                  <div className="chart-center-label">
+                    <p className="label">{t('total')}</p>
+                    <p className="amount">${(totalBalance / 1000).toFixed(1)}k</p>
+                  </div>
+
+                  <div className="custom-legend-container">
+                    {(statsView === 'market' ? marketData : assetData).map((entry, index) => {
+                      const total = (statsView === 'market' ? marketData : assetData).reduce((s, i) => s + i.value, 0);
+                      const percent = total > 0 ? (entry.value / total * 100).toFixed(1) : '0.0';
+                      return (
+                        <div key={entry.name} className="custom-legend-item">
+                          <div className="legend-info">
+                            <span className="legend-color-dot" style={{ background: COLORS[index % COLORS.length] }}></span>
+                            <span className="legend-text">{entry.name}</span>
+                          </div>
+                          <span className="legend-percent">{percent}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                  <PieChart size={64} color="var(--primary)" style={{ marginBottom: '20px', opacity: 0.5 }} />
+                  <p style={{ color: 'var(--text-muted)' }}>{t('noData')}</p>
                 </div>
               )}
             </div>
           </section>
-        </>
-      )}
-
-      {activeTab === 'settings' && (
-        <section className="settings-view animate-fade-in">
-          <div className="card settings-container">
-            <h2 className="view-title">{t('exchanges')}</h2>
-            <div className="exchange-list">
-              {exchangeConfigs?.map(config => (
-                <div key={config.id} className="exchange-config-card">
-                  <div className="exchange-info">
-                    <p className="exchange-name">{t(config.exchangeName as any)}</p>
-                    <p className="exchange-sync-time">
-                      {t('lastSynced')}: {config.lastSynced ? new Date(config.lastSynced).toLocaleString() : t('never')}
-                    </p>
-                    {exchangeTotals[config.exchangeName] > 0 && (
-                      <p className="exchange-balance-total">
-                        {displayValue(exchangeTotals[config.exchangeName], '$')} TWD
-                      </p>
-                    )}
-                  </div>
-                  <div className="exchange-actions">
-                    <button
-                      className="inline-sync-btn"
-                      onClick={() => exchangeService.syncBalances(config)}
-                      title={t('syncExchange')}
-                    >
-                      <RefreshCw size={18} />
-                    </button>
-                    <button
-                      className="inline-delete-btn"
-                      onClick={() => {
-                        if (config.id && window.confirm(t('confirmDeleteExchange'))) {
-                          exchangeService.deleteExchange(config.id, config.exchangeName);
-                        }
-                      }}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="add-exchange-form card-sub">
-              <h3>{t('addExchange')}</h3>
-              <p className="tip">{t('readOnlyTip')}</p>
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const name = formData.get('exchangeName') as 'pionex' | 'bitopro';
-                const key = formData.get('apiKey') as string;
-                const secret = formData.get('apiSecret') as string;
-
-                if (name && key && secret) {
-                  await db.exchangeConfigs.add({
-                    exchangeName: name,
-                    apiKey: key,
-                    apiSecret: secret
-                  });
-                  (e.target as HTMLFormElement).reset();
-                }
-              }}>
-                <select name="exchangeName" className="settings-select" required>
-                  <option value="pionex">{t('pionex')}</option>
-                  <option value="bitopro">{t('bitopro')}</option>
-                </select>
-                <input name="apiKey" type="text" placeholder={t('apiKey')} className="settings-input" required />
-                <input name="apiSecret" type="password" placeholder={t('apiSecret')} className="settings-input" required />
-                <button type="submit" className="settings-save-btn">{t('addExchange')}</button>
-              </form>
-            </div>
-          </div>
-        </section>
-      )}
-      {activeTab === 'stats' && (
-        <section className="stats-view animate-fade-in">
-          <div className="card chart-container">
-            <div className="stats-header">
-              <h2 className="view-title">{t('allocation')}</h2>
-              <div className="stats-toggle">
-                <button
-                  className={`toggle-btn ${statsView === 'market' ? 'active' : ''}`}
-                  onClick={() => setStatsView('market')}
-                >
-                  {t('byMarket')}
-                </button>
-                <button
-                  className={`toggle-btn ${statsView === 'asset' ? 'active' : ''}`}
-                  onClick={() => setStatsView('asset')}
-                >
-                  {t('byAsset')}
-                </button>
-              </div>
-            </div>
-
-            {(statsView === 'market' ? marketData.length : assetData.length) > 0 ? (
-              <div className="chart-wrapper">
-                <ResponsiveContainer width="100%" height={300}>
-                  <RePieChart>
-                    <Pie
-                      data={statsView === 'market' ? marketData : assetData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={80}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {(statsView === 'market' ? marketData : assetData).map((_entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: 'rgba(18, 18, 23, 0.9)',
-                        border: '1px solid var(--glass-border)',
-                        borderRadius: '12px',
-                        color: '#fff'
-                      }}
-                      itemStyle={{ color: '#fff' }}
-                      formatter={(value: any) => value !== undefined ? `$${Number(value).toLocaleString()}` : ''}
-                    />
-                  </RePieChart>
-                </ResponsiveContainer>
-                <div className="chart-center-label">
-                  <p className="label">{t('total')}</p>
-                  <p className="amount">${(totalBalance / 1000).toFixed(1)}k</p>
-                </div>
-
-                <div className="custom-legend-container">
-                  {(statsView === 'market' ? marketData : assetData).map((entry, index) => {
-                    const total = (statsView === 'market' ? marketData : assetData).reduce((s, i) => s + i.value, 0);
-                    const percent = total > 0 ? (entry.value / total * 100).toFixed(1) : '0.0';
-                    return (
-                      <div key={entry.name} className="custom-legend-item">
-                        <div className="legend-info">
-                          <span className="legend-color-dot" style={{ background: COLORS[index % COLORS.length] }}></span>
-                          <span className="legend-text">{entry.name}</span>
-                        </div>
-                        <span className="legend-percent">{percent}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <PieChart size={64} color="var(--primary)" style={{ marginBottom: '20px', opacity: 0.5 }} />
-                <p style={{ color: 'var(--text-muted)' }}>{t('noData')}</p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+        )
+      }
 
       {/* Modal */}
       <AddAssetModal
@@ -985,34 +991,36 @@ function App() {
       </nav>
 
       {/* Global Toast Notification - FORCE INLINE STYLES */}
-      {syncStatus && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'fixed',
-          top: '12%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'rgba(20, 20, 25, 0.9)',
-          border: '1px solid rgba(59, 130, 246, 0.5)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          zIndex: 999999,
-          padding: '12px 24px',
-          fontSize: '1rem',
-          fontWeight: 600,
-          borderRadius: '20px',
-          width: 'max-content',
-          maxWidth: '90vw',
-          textAlign: 'center',
-          color: 'white',
-          backdropFilter: 'blur(12px)',
-          animation: 'simpleFadeIn 0.3s ease'
-        }}>
-          {syncStatus}
-        </div>
-      )}
-    </div>
+      {
+        syncStatus && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'fixed',
+            top: '12%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(20, 20, 25, 0.9)',
+            border: '1px solid rgba(59, 130, 246, 0.5)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            zIndex: 999999,
+            padding: '12px 24px',
+            fontSize: '1rem',
+            fontWeight: 600,
+            borderRadius: '20px',
+            width: 'max-content',
+            maxWidth: '90vw',
+            textAlign: 'center',
+            color: 'white',
+            backdropFilter: 'blur(12px)',
+            animation: 'simpleFadeIn 0.3s ease'
+          }}>
+            {syncStatus}
+          </div>
+        )
+      }
+    </div >
   );
 }
 
