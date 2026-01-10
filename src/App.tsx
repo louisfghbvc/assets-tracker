@@ -68,6 +68,14 @@ function App() {
     return typeof value === "number" ? `${prefix}${value.toLocaleString()}` : `${prefix}${value}`;
   };
 
+  const compactDisplayValue = (value: number, prefix: string = "") => {
+    if (hideValues) return "****";
+    if (Math.abs(value) >= 1000) {
+      return `${prefix}${(value / 1000).toFixed(1)}k`;
+    }
+    return `${prefix}${value.toFixed(1)}`;
+  };
+
   const [language, setLanguage] = useState<Language>((localStorage.getItem("app_language") as Language) || 'zh');
 
   const t = (key: keyof typeof translations.en) => {
@@ -205,6 +213,7 @@ function App() {
       return {
         market,
         totalValue: val.totalValue,
+        profit,
         profitPercent
       };
     });
@@ -535,7 +544,7 @@ function App() {
             <span className={`stat-value ${Number(balanceChange) >= 0 ? 'positive' : 'negative'}`}>
               {displayValue(Math.abs(Number(balanceChange)), Number(balanceChange) >= 0 ? '+$' : '$')} ({balanceChangePercent}%)
             </span>
-            <span className="stat-label">{t('thanYesterday')}</span>
+            <span className="stat-label">{t('totalProfit')}</span>
           </div>
         </div>
       </header>
@@ -557,7 +566,7 @@ function App() {
                   <div className="stat-card-header">
                     <p className="stat-card-label">{stat.market === 'TW' ? t('twStocks') : stat.market === 'US' ? t('usStocks') : t('crypto')}</p>
                     <span className={`stat-card-pct ${stat.profitPercent >= 0 ? 'positive' : 'negative'}`}>
-                      {stat.profitPercent >= 0 ? '+' : ''}{stat.profitPercent.toFixed(1)}%
+                      {compactDisplayValue(Math.abs(stat.profit), stat.profit >= 0 ? '+$' : '$')} ({stat.profitPercent >= 0 ? '+' : ''}{stat.profitPercent.toFixed(1)}%)
                     </span>
                   </div>
                   <p className="stat-card-value">
@@ -612,7 +621,7 @@ function App() {
                             </span>
                           )}
                           <span className={`asset-profit-badge ${asset.profitPercent >= 0 ? 'positive' : 'negative'}`}>
-                            {asset.profitPercent >= 0 ? '+' : ''}{asset.profitPercent.toFixed(1)}%
+                            {displayValue(Math.abs(asset.profit), asset.profit >= 0 ? '+$' : '$')} ({asset.profitPercent >= 0 ? '+' : ''}{asset.profitPercent.toFixed(1)}%)
                           </span>
                         </div>
                       </div>

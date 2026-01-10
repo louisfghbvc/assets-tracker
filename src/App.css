@@ -451,6 +451,12 @@ body {
     gap: 8px;
     border-radius: 16px;
   }
+
+  .stat-card-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 4px;
+  }
 }
 
 @media (max-width: 400px) {
@@ -578,6 +584,24 @@ body {
 }
 
 .stat-card-pct.negative {
+  color: var(--accent);
+  background: rgba(244, 63, 94, 0.1);
+}
+
+.asset-profit-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.asset-profit-badge.positive {
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.asset-profit-badge.negative {
   color: var(--accent);
   background: rgba(244, 63, 94, 0.1);
 }

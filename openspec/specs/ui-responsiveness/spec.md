@@ -4,12 +4,12 @@
 TBD - created by archiving change improve-ui-responsiveness. Update Purpose after archive.
 ## Requirements
 ### Requirement: Layout Fluidity
-The application UI SHALL adapt its typography and spacing fluidly across various mobile screen sizes to maintain readability and aesthetic balance.
+The application UI SHALL adapt its typography and spacing fluidly across various mobile screen sizes, including ultra-compact devices (under 360px width), to prevent element overlapping and maintain usability.
 
-#### Scenario: Balance Display on Different Devices
-- **GIVEN** the application is running on a device with 320px width (e.g. iPhone SE)
-- **THEN** the total balance font size MUST scale down to avoid horizontal scrolling.
-- **AND** on a 430px width device (e.g. iPhone 15 Pro Max), it MUST scale up to fill the space appropriately.
+#### Scenario: Responsive Market Cards
+- **GIVEN** a screen width under 480px
+- **WHEN** market stats cards are displayed
+- **THEN** the badge containing profit and percentage MUST stack below the market label or the layout MUST adjust to prevent truncation.
 
 ### Requirement: Modal Accessibility
 All interactive modals SHALL remain fully functional and scrollable even on devices with limited vertical or horizontal space.
@@ -23,9 +23,8 @@ All interactive modals SHALL remain fully functional and scrollable even on devi
 ### Requirement: Asset Card Robustness
 Asset list items SHALL handle long strings and large numeric values without layout breakage or overlapping elements.
 
-#### Scenario: Long Asset Name on Narrow Screen
-- **GIVEN** an asset with a very long name (e.g. "Pionex BTC-USD Dual-Investment Share")
-- **WHEN** viewed on a 320px screen
-- **THEN** the name MUST truncate with an ellipsis (`...`).
-- **AND** the price and action buttons MUST remain correctly aligned and visible.
+#### Scenario: Display Absolute Profit on Mobile
+- **GIVEN** a mobile screen
+- **WHEN** the asset list is displayed
+- **THEN** high-precision profit values MUST be formatted or containers MUST adjust to prevent overlapping with labels.
 
