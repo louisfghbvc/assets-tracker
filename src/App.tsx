@@ -588,6 +588,7 @@ function App() {
             <p className="balance-label">{t('totalBalance')}</p>
             <button
               onClick={() => setHideValues(!hideValues)}
+              data-testid="privacy-toggle"
               style={{
                 background: 'none',
                 border: 'none',
@@ -602,7 +603,7 @@ function App() {
               {hideValues ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <h1 className="balance-amount">
+          <h1 className="balance-amount" data-testid="total-balance">
             {displayValue(totalBalance, '$')}
           </h1>
           <div className="balance-stat">

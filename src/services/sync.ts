@@ -136,7 +136,7 @@ export const syncService = {
 
             // Normalization: Ensure Crypto symbols are SYMBOL-USD format
             let normalizedSymbol = symbol;
-            if (market === "Crypto" && !normalizedSymbol.includes("-")) {
+            if (market?.toUpperCase() === "CRYPTO" && !normalizedSymbol.includes("-")) {
                 normalizedSymbol = `${normalizedSymbol}-USD`;
             }
 

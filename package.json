@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "android": "export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && export ANDROID_HOME=$HOME/Library/Android/sdk && export ANDROID_SDK_ROOT=$ANDROID_HOME && export NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125 && tauri android dev",
-    "ios": "tauri ios dev"
+    "ios": "tauri ios dev",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
@@ -27,12 +30,20 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/coverage-v8": "^4.0.17",
+    "fake-indexeddb": "^6.2.5",
     "gh-pages": "^6.3.0",
+    "jsdom": "^27.4.0",
+    "msw": "^2.12.7",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.0.17"
   }
 }

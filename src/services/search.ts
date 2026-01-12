@@ -94,7 +94,7 @@ export const searchService = {
                 (group.data || []).map((s: string) => {
                     const parts = s.trim().split(/\s+/);
                     const symbolOnly = parts[0];
-                    const nameOnly = parts.slice(1).join(' ').split('\t')[0];
+                    const nameOnly = parts.slice(1, -1).join(' ').split('\t')[0] || parts.slice(1).join(' ').split('\t')[0];
 
                     return {
                         symbol: `${symbolOnly}.TWO`,
