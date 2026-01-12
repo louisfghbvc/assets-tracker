@@ -14,7 +14,8 @@ import {
   GanttChartSquare,
   Eye,
   EyeOff,
-  Pencil
+  Pencil,
+  BarChart2
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -34,6 +35,7 @@ import { exchangeService } from "./services/exchange";
 import AddAssetModal from "./components/AddAssetModal";
 import EditAssetModal from "./components/EditAssetModal";
 import { translations, Language } from "./translations";
+import { PriceChart } from "./components/PriceChart";
 
 const failedLogos = new Set<string>();
 
@@ -97,6 +99,7 @@ function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<any>(null);
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
+  const [chartAsset, setChartAsset] = useState<any | null>(null);
 
   const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'settings'>('assets');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -692,7 +695,15 @@ function App() {
                             </span>
                           </div>
                         </div>
-                        <p className="market-per-unit">
+                        <p
+                          className="market-per-unit clickable"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setChartAsset(asset);
+                          }}
+                          title={t('viewChart' as any)}
+                        >
+                          <BarChart2 size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                           {displayValue(asset.currentPrice || 0, '$')} {t('perUnit')}
                         </p>
                       </div>
@@ -1026,6 +1037,40 @@ function App() {
           </div>
         )
       }
+
+      {/* Chart Modal */}
+      {chartAsset && (
+        <div className="modal-overlay" onClick={() => setChartAsset(null)}>
+          <div className="modal-content chart-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AssetLogo symbol={chartAsset.symbol} market={chartAsset.market} fallbackIcon={<TrendingUp size={24} />} />
+                <div>
+                  <h3 style={{ margin: 0 }}>{chartAsset.name}</h3>
+                  <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>{chartAsset.symbol}</p>
+                </div>
+              </div>
+              <button className="close-btn" onClick={() => setChartAsset(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <PriceChart symbol={chartAsset.symbol} darkMode={true} language={language} />
+
+              <div className="chart-info-footer">
+                <div className="footer-stat">
+                  <span className="label">{t('currentPrice' as any)}</span>
+                  <span className="value">{displayValue(chartAsset.currentPrice, '$')}</span>
+                </div>
+                <div className="footer-stat">
+                  <span className="label">{t('profit' as any)}</span>
+                  <span className={`value ${chartAsset.profit >= 0 ? 'positive' : 'negative'}`}>
+                    {displayValue(Math.abs(chartAsset.profit), chartAsset.profit >= 0 ? '+$' : '$')} ({chartAsset.profitPercent.toFixed(1)}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

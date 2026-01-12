@@ -92,6 +92,9 @@ export const translations = {
         refreshComplete: "Refresh complete!",
         refreshFailed: "Refresh failed.",
         uploading: "Uploading to cloud...",
+        dailyChart: "Daily",
+        weeklyChart: "Weekly",
+        monthlyChart: "Monthly",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -184,5 +187,8 @@ export const translations = {
         refreshComplete: "行情更新完成！",
         refreshFailed: "行情更新失敗。",
         uploading: "正在上傳至雲端...",
+        dailyChart: "日線",
+        weeklyChart: "週線",
+        monthlyChart: "月線",
     }
 };

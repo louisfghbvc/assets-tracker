@@ -3,6 +3,15 @@ export interface PriceResult {
     price: number;
 }
 
+export interface CandleData {
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+}
+
 export const priceService = {
     async fetchExchangeRate(): Promise<number> {
         try {
@@ -117,5 +126,57 @@ export const priceService = {
             }
         }
         return results;
+    },
+
+    async fetchHistory(symbol: string, range: string = '1mo', interval: string = '1d'): Promise<CandleData[]> {
+        try {
+            if (!(window as any).__TAURI_INTERNALS__) {
+                return await this.fetchHistoryWeb(symbol, range, interval);
+            } else {
+                const { invoke } = await import("@tauri-apps/api/core");
+                return await invoke("fetch_history", { symbol, range, interval });
+            }
+        } catch (e: any) {
+            console.error("History fetch failed:", e);
+            throw e; // Throw so UI can capture message
+        }
+    },
+
+    async fetchHistoryWeb(symbol: string, range: string, interval: string): Promise<CandleData[]> {
+        const sanitized = symbol.trim().split(/\s+/)[0];
+        const yahooSymbol = sanitized === 'BTC' ? 'BTC-USD' : sanitized === 'ETH' ? 'ETH-USD' : sanitized === 'SOL' ? 'SOL-USD' : sanitized;
+        const targetUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
+
+        try {
+            // Usecorsproxy.io
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+            if (!res.ok) return [];
+            const json = await res.json();
+            const result = json.chart?.result?.[0];
+            if (!result) return [];
+
+            const ts = result.timestamp;
+            const indicators = result.indicators.quote[0];
+            const history: CandleData[] = [];
+
+            if (!ts) return [];
+
+            for (let i = 0; i < ts.length; i++) {
+                if (indicators.open?.[i]) {
+                    history.push({
+                        time: ts[i],
+                        open: indicators.open[i],
+                        high: indicators.high[i],
+                        low: indicators.low[i],
+                        close: indicators.close[i],
+                        volume: indicators.volume[i]
+                    });
+                }
+            }
+            return history;
+        } catch (e) {
+            console.error("fetchHistoryWeb failed:", e);
+            return [];
+        }
     }
 };

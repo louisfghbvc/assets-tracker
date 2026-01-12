@@ -151,11 +151,126 @@ async fn fetch_prices(symbols: Vec<String>) -> Result<Vec<PriceInfo>, String> {
     Ok(results)
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct CandleData {
+    pub time: i64,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: i64,
+}
+
+#[tauri::command]
+async fn fetch_history(
+    symbol: String,
+    range: String,
+    interval: String,
+) -> Result<Vec<CandleData>, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .default_headers({
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert("Accept", "application/json, text/plain, */*".parse().unwrap());
+            headers.insert("Accept-Language", "en-US,en;q=0.9".parse().unwrap());
+            headers.insert("Origin", "https://finance.yahoo.com".parse().unwrap());
+            headers.insert("Referer", "https://finance.yahoo.com/".parse().unwrap());
+            headers
+        })
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // Improved Symbol Normalization
+    let mut yahoo_symbol = symbol.trim().to_uppercase();
+
+    // Handle Crypto
+    if yahoo_symbol == "BTC" || yahoo_symbol == "ETH" || yahoo_symbol == "SOL" {
+        yahoo_symbol = format!("{}-USD", yahoo_symbol);
+    }
+
+    // Handle Taiwan Stocks
+    if yahoo_symbol.ends_with(".TW") {
+        // Already ends with .TW, but ensure it's not .TWO if it's listed on TSEC
+        // Most common is .TW for TSEC and .TWO for OTC
+    }
+
+    let url = format!(
+        "https://query2.finance.yahoo.com/v8/finance/chart/{}?interval={}&range={}",
+        yahoo_symbol, interval, range
+    );
+
+    println!("Fetching history from: {}", url);
+
+    match client.get(url).send().await {
+        Ok(resp) => {
+            let status = resp.status();
+            if !status.is_success() {
+                return Err(format!("Yahoo Finance returned status: {}", status));
+            }
+
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                if let Some(error) = json["chart"]["error"]["description"].as_str() {
+                    return Err(error.to_string());
+                }
+
+                let result = &json["chart"]["result"][0];
+                let timestamps = result["timestamp"].as_array();
+                let indicators = &result["indicators"]["quote"][0];
+
+                let opens = indicators["open"].as_array();
+                let highs = indicators["high"].as_array();
+                let lows = indicators["low"].as_array();
+                let closes = indicators["close"].as_array();
+                let volumes = indicators["volume"].as_array();
+
+                if let (Some(ts), Some(op), Some(hi), Some(lo), Some(cl), Some(vo)) =
+                    (timestamps, opens, highs, lows, closes, volumes)
+                {
+                    let mut history = Vec::new();
+                    for i in 0..ts.len() {
+                        let open = op[i].as_f64();
+                        let high = hi[i].as_f64();
+                        let low = lo[i].as_f64();
+                        let close = cl[i].as_f64();
+                        let volume = vo[i].as_i64().unwrap_or(0);
+
+                        // Only add if we have a valid close price
+                        if let Some(c) = close {
+                            if c > 0.0 {
+                                history.push(CandleData {
+                                    time: ts[i].as_i64().unwrap_or(0),
+                                    open: open.unwrap_or(c),
+                                    high: high.unwrap_or(c),
+                                    low: low.unwrap_or(c),
+                                    close: c,
+                                    volume,
+                                });
+                            }
+                        }
+                    }
+                    println!(
+                        "Successfully fetched {} data points for {}",
+                        history.len(),
+                        yahoo_symbol
+                    );
+                    return Ok(history);
+                }
+            }
+            Err("Could not parse history data response".to_string())
+        }
+        Err(e) => Err(format!("Network error fetching history: {}", e)),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![fetch_prices, fetch_exchange_rate])
+        .invoke_handler(tauri::generate_handler![
+            fetch_prices,
+            fetch_exchange_rate,
+            fetch_history
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
