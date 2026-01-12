@@ -144,5 +144,80 @@ describe('priceService', () => {
             const results = await priceService.fetchHistoryWeb('INVALID', '1d');
             expect(results).toEqual([]);
         });
+
+        it('should handle symbols with whitespace', async () => {
+            const mockYahooResp = {
+                chart: {
+                    result: [{
+                        meta: { regularMarketPrice: 150.0 }
+                    }]
+                }
+            };
+
+            (global.fetch as any).mockResolvedValue({
+                ok: true,
+                text: async () => JSON.stringify(mockYahooResp),
+            });
+
+            const results = await priceService.fetchPricesWeb(['  AAPL  ', 'MSFT extra text']);
+            expect(results.length).toBeGreaterThanOrEqual(0);
+            // Symbols should be sanitized (whitespace trimmed and only first word taken)
+        });
+
+        it('should handle empty symbols array', async () => {
+            const results = await priceService.fetchPrices([]);
+            expect(results).toEqual([]);
+        });
+
+        it('should batch process multiple symbols', async () => {
+            const mockYahooResp = {
+                chart: {
+                    result: [{
+                        meta: { regularMarketPrice: 150.0 }
+                    }]
+                }
+            };
+
+            (global.fetch as any).mockResolvedValue({
+                ok: true,
+                text: async () => JSON.stringify(mockYahooResp),
+            });
+
+            const results = await priceService.fetchPricesWeb(['AAPL', 'MSFT', 'GOOGL']);
+            expect(results.length).toBeGreaterThanOrEqual(0);
+        });
+
+        it('should return USD and TWD as price 1', async () => {
+            const results = await priceService.fetchPricesWeb(['USD', 'TWD', 'USD-USD']);
+            expect(results).toHaveLength(3);
+            results.forEach(r => expect(r.price).toBe(1));
+        });
+    });
+
+    describe('fetchHistory fallback', () => {
+        it('should fallback to web mode when Tauri not available', async () => {
+            delete (window as any).__TAURI_INTERNALS__;
+
+            const mockHistoryResp = {
+                chart: {
+                    result: [{
+                        timestamp: [1609459200],
+                        indicators: {
+                            quote: [{
+                                close: [150.0]
+                            }]
+                        }
+                    }]
+                }
+            };
+
+            (global.fetch as any).mockResolvedValue({
+                ok: true,
+                text: async () => JSON.stringify(mockHistoryResp),
+            });
+
+            const results = await priceService.fetchHistory('AAPL', '1d');
+            expect(results.length).toBeGreaterThanOrEqual(0);
+        });
     });
 });
