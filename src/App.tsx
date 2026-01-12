@@ -736,6 +736,12 @@ function App() {
                               {displayValue(asset.cost, '$')}
                             </span>
                           </div>
+                          <div className="summary-stat">
+                            <span className="label">{t('totalCost')}</span>
+                            <span className="value">
+                              {displayValue(asset.totalCostBasis, '$')}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="records-list">
