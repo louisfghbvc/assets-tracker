@@ -53,4 +53,47 @@ describe('exchangeService', () => {
         expect(results.find(r => r.name === 'TWD')?.symbol).toBe('TWD');
         expect(results.find(r => r.name === 'TWD')?.market).toBe('TW');
     });
+
+    it('should handle empty Pionex balances', async () => {
+        (global.fetch as any).mockResolvedValue({
+            json: async () => ({ result: true, data: { balances: [] } }),
+        });
+
+        const results = await exchangeService.fetchPionex('key', 'secret');
+        expect(results).toEqual([]);
+    });
+
+    it('should handle fetchPionex API errors', async () => {
+        (global.fetch as any).mockRejectedValue(new Error('Network error'));
+
+        await expect(exchangeService.fetchPionex('key', 'secret'))
+            .rejects.toThrow();
+    });
+
+    it('should handle fetchBitoPro API errors', async () => {
+        (global.fetch as any).mockRejectedValue(new Error('Network error'));
+
+        await expect(exchangeService.fetchBitoPro('key', 'secret'))
+            .rejects.toThrow();
+    });
+
+    it('should filter out zero balances from Pionex', async () => {
+        const mockResp = {
+            result: true,
+            data: {
+                balances: [
+                    { coin: 'BTC', free: '1.0', frozen: '0.0' },
+                    { coin: 'ETH', free: '0.0', frozen: '0.0' }
+                ]
+            }
+        };
+
+        (global.fetch as any).mockResolvedValue({
+            json: async () => mockResp,
+        });
+
+        const results = await exchangeService.fetchPionex('key', 'secret');
+        expect(results).toHaveLength(1);
+        expect(results[0].symbol).toBe('BTC-USD');
+    });
 });
