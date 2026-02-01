@@ -134,40 +134,74 @@ function recordDailySnapshot() {
     if (json && json.rates && json.rates.TWD) {
       exchangeRate = json.rates.TWD;
     } else {
-      const gfRate = GoogleFinance("CURRENCY:USDTWD");
+      const gfRate = GoogleFinance_Single("CURRENCY:USDTWD");
       if (gfRate) exchangeRate = gfRate;
     }
   } catch(e) {}
 
   const data = portfolioSheet.getDataRange().getValues();
-  let totalValueTwd = 0;
+  if (data.length <= 1) return;
 
-  // --- 2. 逐行計算資產總值 ---
+  // --- 2. 建立「隱形計算機」來批量抓取 Google Finance 價格 ---
+  let calcSheet = ss.getSheetByName('Temp_Calc');
+  if (calcSheet) ss.deleteSheet(calcSheet);
+  calcSheet = ss.insertSheet('Temp_Calc');
+  calcSheet.hideSheet();
+
+  const symbols = [];
   for (let i = 1; i < data.length; i++) {
     const symbol = data[i][1];
     const market = data[i][4];
-    const qty = parseFloat(data[i][5]);
-    if (!symbol || isNaN(qty)) continue;
+    if (!symbol) { symbols.push(""); continue; }
 
-    let price = 0;
-    try {
-      if (market === 'TW') {
-        const code = symbol.replace(".TW", "").replace(".TWO", "");
-        price = GoogleFinance("TPE:" + code, "price") || GoogleFinance("TWO:" + code, "price");
-      } else if (market === 'US') {
-        price = GoogleFinance(symbol, "price");
-      } else if (market === 'Crypto') {
-        const crypto = symbol.split('-')[0];
-        price = GoogleFinance("CURRENCY:" + crypto + "USD");
+    if (market === 'TW') {
+      const code = symbol.replace(".TW", "").replace(".TWO", "");
+      if (code === "TWD") {
+        symbols.push("1"); // 台幣現金直接給 1
+      } else {
+        symbols.push('IFERROR(GOOGLEFINANCE("TPE:' + code + '"), GOOGLEFINANCE("TWO:' + code + '"))');
       }
-    } catch(e) {}
+    } else if (market === 'US') {
+      symbols.push('GOOGLEFINANCE("' + symbol + '")');
+    } else if (market === 'Crypto') {
+      const crypto = symbol.split('-')[0].toUpperCase();
+      if (crypto === "USDT" || crypto === "USDC" || crypto === "USD") {
+        symbols.push("1"); // 穩定幣直接給 1 (美金)
+      } else {
+        symbols.push('GOOGLEFINANCE("CURRENCY:' + crypto + 'USD")');
+      }
+    } else {
+      symbols.push("");
+    }
+  }
 
-    const finalPrice = (price && price > 0) ? price : parseFloat(data[i][6]);
-    const val = qty * finalPrice;
+  // 批量填入公式並讀取結果
+  const formulas = symbols.map(s => {
+    if (!s) return [""];
+    return (s === "1") ? [1] : ["=" + s]; // 如果是 1 則直接填入數字，否則填入公式
+  });
+  calcSheet.getRange(1, 1, formulas.length, 1).setFormulas(formulas);
+  SpreadsheetApp.flush(); // 強迫 Google 計算
+  const prices = calcSheet.getRange(1, 1, formulas.length, 1).getValues();
+  ss.deleteSheet(calcSheet); // 刪除臨時分頁
+
+  // --- 3. 逐行累加總價值 ---
+  let totalValueTwd = 0;
+  for (let i = 1; i < data.length; i++) {
+    const market = data[i][4];
+    const qty = parseFloat(data[i][5]);
+    let price = parseFloat(prices[i-1][0]);
+
+    // 備案：如果抓不到價格，才使用手動輸入的成本
+    if (!price || price <= 0) {
+      price = parseFloat(data[i][6]) || 0;
+    }
+
+    const val = qty * price;
     totalValueTwd += (market === 'TW' ? val : val * exchangeRate);
   }
 
-  // --- 3. 紀錄到 History (同一天自動覆蓋更新，但保護手動筆記) ---
+  // --- 4. 紀錄到 History (同一天自動覆蓋更新，但保護手動筆記) ---
   const today = Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
   const lastRow = historySheet.getLastRow();
   
@@ -176,7 +210,6 @@ function recordDailySnapshot() {
     if (lastDate === today) {
       historySheet.getRange(lastRow, 2).setValue(totalValueTwd);
       
-      // 只有在備註是空的，或者是自動產生的時候才更新備註
       const currentNote = historySheet.getRange(lastRow, 4).getValue();
       if (!currentNote || currentNote.indexOf("Auto-") === 0) {
         historySheet.getRange(lastRow, 4).setValue("Auto-updated at " + new Date().toLocaleTimeString());
@@ -186,6 +219,18 @@ function recordDailySnapshot() {
   }
   historySheet.appendRow([today, totalValueTwd, "TWD", "Auto-snapshot"]);
 }
+
+/** 輔助用：單筆抓取匯率 **/
+function GoogleFinance_Single(query) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.insertSheet('Temp_Single');
+  sh.getRange('A1').setFormula('=GOOGLEFINANCE("' + query + '")');
+  SpreadsheetApp.flush();
+  const res = sh.getRange('A1').getValue();
+  ss.deleteSheet(sh);
+  return res;
+}
+
 ```
 
 3.  **設定定時執行 (鬧鐘)**：

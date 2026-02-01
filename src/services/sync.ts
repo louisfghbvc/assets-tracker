@@ -1,4 +1,4 @@
-import { db } from "../db/database";
+import { db, type HistoryRecord } from "../db/database";
 import { googleSheetsService } from "./googleSheets";
 
 export const syncService = {
@@ -66,7 +66,7 @@ export const syncService = {
 
                 // --- History Merge Logic ---
                 const localHistory = await db.history.toArray();
-                const mergedHistory = [...importedHistory];
+                const mergedHistory: HistoryRecord[] = [...importedHistory];
 
                 // Check local records for notes that might not be in the cloud
                 for (const localRec of localHistory) {
@@ -223,7 +223,7 @@ export const syncService = {
         }).filter(c => c !== null);
     },
 
-    parseHistoryRows(allRows: any[]) {
+    parseHistoryRows(allRows: any[]): HistoryRecord[] {
         if (allRows.length === 0) return [];
 
         let headerIndex = -1;
@@ -246,7 +246,7 @@ export const syncService = {
         if (headerIndex === -1) return [];
 
         const dataRows = allRows.slice(headerIndex + 1);
-        return dataRows.map((row: any) => {
+        return dataRows.map((row: any): HistoryRecord | null => {
             if (!row[colMap.date] || !row[colMap.totalValue]) return null;
             return {
                 date: row[colMap.date].toString().trim(),
@@ -254,6 +254,6 @@ export const syncService = {
                 currency: row[colMap.currency]?.toString().trim() || 'TWD',
                 note: colMap.note !== undefined ? row[colMap.note]?.toString().trim() : undefined
             };
-        }).filter(h => h !== null);
+        }).filter((h): h is HistoryRecord => h !== null);
     }
 };

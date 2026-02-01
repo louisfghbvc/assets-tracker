@@ -1066,7 +1066,7 @@ function App() {
                       <span>{t('value')}</span>
                       <span>{t('change')}</span>
                     </div>
-                    {filteredHistory.slice().reverse().slice(0, 15).map((record, index, array) => {
+                    {filteredHistory.slice().reverse().slice(0, 15).map((record) => {
                       // Find previous record in full history to calculate change
                       const fullIndex = history?.findIndex(h => h.id === record.id) ?? -1;
                       const prevRecord = fullIndex > 0 ? history?.[fullIndex - 1] : null;
