@@ -11,10 +11,10 @@ Implement a reliable CORS proxy using Cloudflare Workers to achieve 100% success
 **Dependencies**: None  
 **Estimated Time**: 15 minutes
 
-- [ ] Create `workers/` directory in project root
-- [ ] Initialize Cloudflare Worker with `wrangler init cors-proxy`
-- [ ] Configure `wrangler.toml` with worker name and routing
-- [ ] Add `.gitignore` entries for worker build artifacts
+- [x] Create `workers/` directory in project root
+- [x] Initialize Cloudflare Worker with `wrangler init cors-proxy`
+- [x] Configure `wrangler.toml` with worker name and routing
+- [x] Add `.gitignore` entries for worker build artifacts
 
 **Validation**: Worker project structure exists and wrangler configuration is valid
 
@@ -24,12 +24,12 @@ Implement a reliable CORS proxy using Cloudflare Workers to achieve 100% success
 **Dependencies**: 1.1  
 **Estimated Time**: 30 minutes
 
-- [ ] Create worker script with POST endpoint `/proxy`
-- [ ] Extract target URL from request body
-- [ ] Forward request to target URL with all headers
-- [ ] Add CORS headers to response (`Access-Control-Allow-Origin: *`)
-- [ ] Handle preflight OPTIONS requests
-- [ ] Add error handling and logging
+- [x] Create worker script with POST endpoint `/proxy`
+- [x] Extract target URL from request body
+- [x] Forward request to target URL with all headers
+- [x] Add CORS headers to response (`Access-Control-Allow-Origin: *`)
+- [x] Handle preflight OPTIONS requests
+- [x] Add error handling and logging
 
 **Validation**: Worker responds correctly to test requests locally (`wrangler dev`)
 
@@ -62,10 +62,10 @@ curl -X POST https://localhost:8787/proxy \
 **Dependencies**: 1.3 (parallel with 2.2)  
 **Estimated Time**: 10 minutes
 
-- [ ] Add `VITE_CORS_PROXY_URL` to `.env.example`
-- [ ] Update build documentation with required env var
-- [ ] Configure GitHub Pages deployment secrets/vars
-- [ ] Add fallback handling if env var missing
+- [x] Add `VITE_CORS_PROXY_URL` to `.env.example`
+- [x] Update build documentation with required env var
+- [x] Configure GitHub Pages deployment secrets/vars
+- [x] Add fallback handling if env var missing
 
 **Validation**: Build succeeds with and without env var set
 
@@ -75,11 +75,11 @@ curl -X POST https://localhost:8787/proxy \
 **Dependencies**: 1.3 (can start in parallel with 2.1)  
 **Estimated Time**: 30 minutes
 
-- [ ] Modify `src/services/price.ts` to check for `VITE_CORS_PROXY_URL`
-- [ ] If worker URL available, use it as primary proxy
-- [ ] Keep existing free proxies as fallback
-- [ ] Update `fetchWithTimeout` to use worker endpoint format
-- [ ] Add logging to distinguish worker vs fallback requests
+- [x] Modify `src/services/price.ts` to check for `VITE_CORS_PROXY_URL`
+- [x] If worker URL available, use it as primary proxy
+- [x] Keep existing free proxies as fallback
+- [x] Update `fetchWithTimeout` to use worker endpoint format
+- [x] Add logging to distinguish worker vs fallback requests
 
 **Validation**: 
 - Local dev with worker env var: uses worker
@@ -103,10 +103,10 @@ const prices = await priceService.fetchPrices(['AAPL']);
 **Dependencies**: 2.2  
 **Estimated Time**: 20 minutes
 
-- [ ] Modify `src/services/exchange.ts` to use worker proxy
-- [ ] Ensure custom headers (API keys, signatures) are forwarded
+- [x] Modify `src/services/exchange.ts` to use worker proxy
+- [x] Ensure custom headers (API keys, signatures) are forwarded
 - [ ] Test Pionex and BitoPro sync on web platform
-- [ ] Add error handling for worker failures
+- [x] Add error handling for worker failures
 
 **Validation**: 
 - Pionex sync works on localhost with worker
@@ -154,11 +154,11 @@ const prices = await priceService.fetchPrices(['AAPL']);
 **Dependencies**: 3.2  
 **Estimated Time**: 30 minutes
 
-- [ ] Create `docs/cloudflare-worker-setup.md`
-- [ ] Document Cloudflare account setup steps
-- [ ] Document worker deployment command
-- [ ] Document environment variable configuration
-- [ ] Add troubleshooting section for common issues
+- [x] Create `docs/cloudflare-worker-setup.md`
+- [x] Document Cloudflare account setup steps
+- [x] Document worker deployment command
+- [x] Document environment variable configuration
+- [x] Add troubleshooting section for common issues
 
 **Deliverable**: Complete standalone guide for deploying worker
 
@@ -168,9 +168,9 @@ const prices = await priceService.fetchPrices(['AAPL']);
 **Dependencies**: 4.1  
 **Estimated Time**: 10 minutes
 
-- [ ] Add "Deployment" section mentioning worker requirement
-- [ ] Link to detailed worker setup guide
-- [ ] Document fallback proxy behavior
+- [x] Add "Deployment" section mentioning worker requirement
+- [x] Link to detailed worker setup guide
+- [x] Document fallback proxy behavior
 - [ ] Update architecture diagram if exists
 
 **Validation**: README clearly explains deployment options

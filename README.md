@@ -31,6 +31,49 @@
 VITE_GOOGLE_CLIENT_ID=您的_CLIENT_ID
 ```
 
+## 🌐 部署 (Deployment)
+
+### GitHub Pages (推薦網頁版)
+
+本專案可直接部署到 GitHub Pages，但為了達到 **100% 可靠的價格抓取**，建議部署自己的 Cloudflare Worker 代理。
+
+#### 為什麼需要 Worker 代理？
+
+| 項目 | 無 Worker | 有 Worker |
+|------|----------|----------|
+| 價格抓取成功率 | ~85-95% | **100%** |
+| 交易所 API (Pionex/BitoPro) | ❌ 不支援 | ✅ 完整支援 |
+| 費用 | 免費 | **免費** (Cloudflare 免費額度) |
+| 速度 | 較慢 (受限免費代理) | 快速 (全球 CDN) |
+
+#### 部署步驟
+
+1. **設定 Google OAuth** (見上方「雲端同步設定」)
+
+2. **部署 Cloudflare Worker** (可選但強烈建議):
+   ```bash
+   # 詳細步驟見 docs/cloudflare-worker-setup.md
+   cd workers/cors-proxy
+   wrangler deploy
+   ```
+
+3. **設定 GitHub Secrets**:
+   - 前往 Repository Settings → Secrets and variables → Actions
+   - 新增以下 secrets:
+     - `VITE_GOOGLE_CLIENT_ID`: 你的 Google OAuth Client ID
+     - `VITE_CORS_PROXY_URL`: Worker URL (如: `https://xxx.workers.dev/proxy`)
+
+4. **觸發部署**: Push 到 main 分支，GitHub Actions 會自動部署
+
+#### 沒有 Worker 的替代方案
+
+如果不想部署 Worker，應用程式會自動降級使用免費公共代理，但會有以下限制：
+- 價格抓取可能偶爾失敗 (~85-95% 成功率)
+- 交易所 API 無法在網頁版使用
+- 需要使用 Tauri 桌面版才能獲得完整功能
+
+**詳細設定指南**: [docs/cloudflare-worker-setup.md](./docs/cloudflare-worker-setup.md)
+
 ## 📱 行動裝置安裝 (Mobile Installation)
 
 由於本專案支援 PWA，建議直接使用此方式安裝，效能最為流暢：
