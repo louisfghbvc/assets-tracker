@@ -46,18 +46,44 @@ export const priceService = {
     },
 
     async fetchPricesWeb(symbols: string[]): Promise<PriceResult[]> {
-        const results: PriceResult[] = [];
+        // Helper function to fetch with timeout
+        const fetchWithTimeout = async (url: string, timeoutMs = 5000): Promise<Response> => {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeout);
+                return response;
+            } catch (error) {
+                clearTimeout(timeout);
+                throw error;
+            }
+        };
+
+        // Updated proxy list with more reliable options
         const proxies = [
+            // Try direct fetch first (works for some APIs)
+            "",
+            // Cloudflare CORS proxy
+            "https://api.codetabs.com/v1/proxy?quest=",
+            // Backup proxies
             "https://corsproxy.io/?",
             "https://api.allorigins.win/raw?url="
         ];
 
-        for (const symbol of symbols) {
+        const fetchSinglePrice = async (symbol: string): Promise<PriceResult | null> => {
             const sanitized = symbol.trim().split(/\s+/)[0];
-            if (sanitized === 'USD' || sanitized === 'USD-USD' || sanitized === 'TWD') {
-                results.push({ symbol, price: 1 });
-                continue;
+
+            // Filter out empty or invalid symbols
+            if (!sanitized || sanitized === '.TW' || sanitized === '.TWO' || sanitized.length === 0) {
+                console.warn(`⚠️ Skipping invalid symbol: "${symbol}"`);
+                return null;
             }
+
+            if (sanitized === 'USD' || sanitized === 'USD-USD' || sanitized === 'TWD') {
+                return { symbol, price: 1 };
+            }
+
             const timestamp = Date.now();
             const yahooSymbol = sanitized === 'BTC' ? 'BTC-USD' : sanitized === 'ETH' ? 'ETH-USD' : sanitized === 'SOL' ? 'SOL-USD' : sanitized;
 
@@ -65,11 +91,16 @@ export const priceService = {
                 ? `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${sanitized.replace(".TW", "")}.tw&json=1&_=${timestamp}`
                 : `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d&_=${timestamp}`;
 
-            let fetched = false;
-            for (const proxy of proxies) {
+            // Try each proxy
+            for (let i = 0; i < proxies.length; i++) {
+                const proxy = proxies[i];
+                const fullUrl = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
+
                 try {
-                    const res = await fetch(`${proxy}${encodeURIComponent(targetUrl)}`);
-                    if (!res.ok) continue;
+                    const res = await fetchWithTimeout(fullUrl);
+                    if (!res.ok) {
+                        continue;
+                    }
 
                     const text = await res.text();
                     let json: any;
@@ -84,32 +115,37 @@ export const priceService = {
                         if (json.msgArray && json.msgArray[0]) {
                             const msg = json.msgArray[0];
                             const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
+
                             if (price > 0) {
-                                results.push({ symbol, price });
-                                fetched = true;
-                                break;
+                                console.log(`✓ ${symbol}: $${price}`);
+                                return { symbol, price };
                             }
                         }
                     } else {
                         const price = json.chart?.result?.[0]?.meta?.regularMarketPrice;
                         if (price) {
-                            results.push({ symbol, price });
-                            fetched = true;
-                            break;
+                            console.log(`✓ ${symbol}: $${price}`);
+                            return { symbol, price };
                         }
                     }
-                } catch {
+                } catch (error: any) {
                     continue;
                 }
             }
 
-            // Fallback for TWSE OTC
-            if (!fetched && sanitized.endsWith(".TW")) {
+            // Fallback for TWSE OTC stocks
+            if (sanitized.endsWith(".TW")) {
                 const code = sanitized.replace(".TW", "");
                 const otcUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${code}.tw&json=1&_=${timestamp}`;
-                for (const proxy of proxies) {
+
+                for (let i = 0; i < proxies.length; i++) {
+                    const proxy = proxies[i];
+                    const fullUrl = proxy ? `${proxy}${encodeURIComponent(otcUrl)}` : otcUrl;
+
                     try {
-                        const res = await fetch(`${proxy}${encodeURIComponent(otcUrl)}`);
+                        const res = await fetchWithTimeout(fullUrl);
+                        if (!res.ok) continue;
+
                         let text = await res.text();
                         let json = JSON.parse(text);
                         if (json.contents) json = JSON.parse(json.contents);
@@ -117,14 +153,30 @@ export const priceService = {
                             const msg = json.msgArray[0];
                             const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
                             if (price > 0) {
-                                results.push({ symbol, price });
-                                break;
+                                console.log(`✓ ${symbol} (OTC): $${price}`);
+                                return { symbol, price };
                             }
                         }
-                    } catch { continue; }
+                    } catch {
+                        continue;
+                    }
                 }
             }
+
+            console.error(`✗ Failed to fetch: ${symbol}`);
+            return null;
+        };
+
+        // Fetch all prices in parallel with a concurrency limit
+        const BATCH_SIZE = 5; // Fetch 5 at a time to avoid overwhelming proxies
+        const results: PriceResult[] = [];
+
+        for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+            const batch = symbols.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(batch.map(fetchSinglePrice));
+            results.push(...batchResults.filter((r): r is PriceResult => r !== null));
         }
+
         return results;
     },
 
@@ -147,36 +199,67 @@ export const priceService = {
         const yahooSymbol = sanitized === 'BTC' ? 'BTC-USD' : sanitized === 'ETH' ? 'ETH-USD' : sanitized === 'SOL' ? 'SOL-USD' : sanitized;
         const targetUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
 
-        try {
-            // Usecorsproxy.io
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
-            if (!res.ok) return [];
-            const json = await res.json();
-            const result = json.chart?.result?.[0];
-            if (!result) return [];
-
-            const ts = result.timestamp;
-            const indicators = result.indicators.quote[0];
-            const history: CandleData[] = [];
-
-            if (!ts) return [];
-
-            for (let i = 0; i < ts.length; i++) {
-                if (indicators.open?.[i]) {
-                    history.push({
-                        time: ts[i],
-                        open: indicators.open[i],
-                        high: indicators.high[i],
-                        low: indicators.low[i],
-                        close: indicators.close[i],
-                        volume: indicators.volume[i]
-                    });
-                }
+        const fetchWithTimeout = async (url: string, timeoutMs = 10000): Promise<Response> => {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeout);
+                return response;
+            } catch (error) {
+                clearTimeout(timeout);
+                throw error;
             }
-            return history;
-        } catch (e) {
-            console.error("fetchHistoryWeb failed:", e);
-            return [];
+        };
+
+        const proxies = [
+            "",
+            "https://api.codetabs.com/v1/proxy?quest=",
+            "https://corsproxy.io/?",
+            "https://api.allorigins.win/raw?url="
+        ];
+
+        for (let i = 0; i < proxies.length; i++) {
+            const proxy = proxies[i];
+            const fullUrl = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
+
+            try {
+                const res = await fetchWithTimeout(fullUrl);
+                if (!res.ok) {
+                    continue;
+                }
+
+                const json = await res.json();
+                const result = json.chart?.result?.[0];
+                if (!result) continue;
+
+                const ts = result.timestamp;
+                const indicators = result.indicators.quote[0];
+                const history: CandleData[] = [];
+
+                if (!ts) continue;
+
+                for (let j = 0; j < ts.length; j++) {
+                    if (indicators.open?.[j]) {
+                        history.push({
+                            time: ts[j],
+                            open: indicators.open[j],
+                            high: indicators.high[j],
+                            low: indicators.low[j],
+                            close: indicators.close[j],
+                            volume: indicators.volume[j]
+                        });
+                    }
+                }
+
+                if (history.length > 0) {
+                    return history;
+                }
+            } catch (e: any) {
+                continue;
+            }
         }
+
+        throw new Error(`Unable to fetch chart data for ${symbol}. All proxies failed.`);
     }
 };

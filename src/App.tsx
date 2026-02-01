@@ -433,6 +433,7 @@ function App() {
         const prices = await priceService.fetchPrices(uniqueSymbols);
         if (prices.length > 0) {
           const priceMap = new Map(prices.map(p => [p.symbol.trim(), p.price]));
+
           for (const asset of allAssets) {
             const trimmedSymbol = asset.symbol.trim();
             const newPrice = priceMap.get(trimmedSymbol);
