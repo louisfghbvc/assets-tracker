@@ -219,9 +219,29 @@ export const priceService = {
                 const code = sanitized.replace(".TW", "");
                 const otcUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${code}.tw&json=1&_=${timestamp}`;
 
-                for (let i = 0; i < proxies.length; i++) {
-                    const proxy = proxies[i];
-                    const fullUrl = proxy ? `${proxy}${encodeURIComponent(otcUrl)}` : otcUrl;
+                // Try Cloudflare Worker first for OTC
+                const workerOtcRes = await fetchViaWorker(otcUrl);
+                if (workerOtcRes) {
+                    try {
+                        const text = await workerOtcRes.text();
+                        let json: any = JSON.parse(text);
+                        if (json.contents) json = JSON.parse(json.contents);
+                        if (json.msgArray && json.msgArray[0]) {
+                            const msg = json.msgArray[0];
+                            const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
+                            if (price > 0) {
+                                console.log(`✓ ${symbol} (OTC/worker): $${price}`);
+                                return { symbol, price };
+                            }
+                        }
+                    } catch {
+                        // Fall through to fallback proxies
+                    }
+                }
+
+                for (let i = 0; i < fallbackProxies.length; i++) {
+                    const proxy = fallbackProxies[i];
+                    const fullUrl = proxy + encodeURIComponent(otcUrl);
 
                     try {
                         const res = await fetchWithTimeout(fullUrl);
@@ -234,7 +254,7 @@ export const priceService = {
                             const msg = json.msgArray[0];
                             const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
                             if (price > 0) {
-                                console.log(`✓ ${symbol} (OTC): $${price}`);
+                                console.log(`✓ ${symbol} (OTC/fallback): $${price}`);
                                 return { symbol, price };
                             }
                         }
@@ -299,14 +319,58 @@ export const priceService = {
             }
         };
 
-        const proxies = [
+        const workerProxyUrl = import.meta.env.VITE_CORS_PROXY_URL;
+
+        // Try Cloudflare Worker first
+        if (workerProxyUrl) {
+            try {
+                const response = await fetch(workerProxyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: targetUrl }),
+                });
+
+                if (response.ok) {
+                    const json = await response.json();
+                    const result = json.chart?.result?.[0];
+                    if (result) {
+                        const ts = result.timestamp;
+                        const indicators = result.indicators.quote[0];
+                        const history: CandleData[] = [];
+
+                        if (ts) {
+                            for (let j = 0; j < ts.length; j++) {
+                                if (indicators.open?.[j]) {
+                                    history.push({
+                                        time: ts[j],
+                                        open: indicators.open[j],
+                                        high: indicators.high[j],
+                                        low: indicators.low[j],
+                                        close: indicators.close[j],
+                                        volume: indicators.volume[j]
+                                    });
+                                }
+                            }
+                            if (history.length > 0) {
+                                console.log(`✓ History for ${symbol} fetched via worker`);
+                                return history;
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Worker proxy failed for history, falling back to free proxies');
+            }
+        }
+
+        const fallbackProxies = [
             "https://api.codetabs.com/v1/proxy?quest=",
             "https://api.allorigins.win/raw?url=",
             "https://corsproxy.io/?"
         ];
 
-        for (let i = 0; i < proxies.length; i++) {
-            const proxy = proxies[i];
+        for (let i = 0; i < fallbackProxies.length; i++) {
+            const proxy = fallbackProxies[i];
             const fullUrl = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
 
             try {
@@ -339,6 +403,7 @@ export const priceService = {
                 }
 
                 if (history.length > 0) {
+                    console.log(`✓ History for ${symbol} fetched via fallback proxy ${i}`);
                     return history;
                 }
             } catch (e: any) {
