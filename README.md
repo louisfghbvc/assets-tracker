@@ -138,6 +138,12 @@ function recordDailySnapshot() {
       if (gfRate) exchangeRate = gfRate;
     }
   } catch(e) {}
+  
+  // 建立 Debug 分頁
+  let debugSheet = ss.getSheetByName('Debug_Prices');
+  if (debugSheet) ss.deleteSheet(debugSheet);
+  debugSheet = ss.insertSheet('Debug_Prices');
+  debugSheet.appendRow(['Symbol', 'Qty', 'Google_Price', 'Final_Price', 'Row_Value_TWD', 'Market', 'Note']);
 
   const data = portfolioSheet.getDataRange().getValues();
   if (data.length <= 1) return;
@@ -157,7 +163,7 @@ function recordDailySnapshot() {
     if (market === 'TW') {
       const code = symbol.replace(".TW", "").replace(".TWO", "");
       if (code === "TWD") {
-        symbols.push("1"); // 台幣現金直接給 1
+        symbols.push("1"); 
       } else {
         symbols.push('IFERROR(GOOGLEFINANCE("TPE:' + code + '"), GOOGLEFINANCE("TWO:' + code + '"))');
       }
@@ -166,7 +172,7 @@ function recordDailySnapshot() {
     } else if (market === 'Crypto') {
       const crypto = symbol.split('-')[0].toUpperCase();
       if (crypto === "USDT" || crypto === "USDC" || crypto === "USD") {
-        symbols.push("1"); // 穩定幣直接給 1 (美金)
+        symbols.push("1"); 
       } else {
         symbols.push('GOOGLEFINANCE("CURRENCY:' + crypto + 'USD")');
       }
@@ -178,30 +184,77 @@ function recordDailySnapshot() {
   // 批量填入公式並讀取結果
   const formulas = symbols.map(s => {
     if (!s) return [""];
-    return (s === "1") ? [1] : ["=" + s]; // 如果是 1 則直接填入數字，否則填入公式
+    return (s === "1") ? [1] : ["=" + s]; 
   });
   calcSheet.getRange(1, 1, formulas.length, 1).setFormulas(formulas);
   SpreadsheetApp.flush(); // 強迫 Google 計算
   const prices = calcSheet.getRange(1, 1, formulas.length, 1).getValues();
   ss.deleteSheet(calcSheet); // 刪除臨時分頁
 
-  // --- 3. 逐行累加總價值 ---
+  // --- 3. 逐行累加總價值 & 寫入 Debug ---
   let totalValueTwd = 0;
+  const debugRows = [];
+
   for (let i = 1; i < data.length; i++) {
+    const symbol = data[i][1];
     const market = data[i][4];
     const qty = parseFloat(data[i][5]);
-    let price = parseFloat(prices[i-1][0]);
+    let googlePrice = parseFloat(prices[i-1][0]);
+    let cost = parseFloat(data[i][6]) || 0; 
 
-    // 備案：如果抓不到價格，才使用手動輸入的成本
-    if (!price || price <= 0) {
-      price = parseFloat(data[i][6]) || 0;
+    if (isNaN(qty) || qty === 0) continue;
+
+    let finalPrice = googlePrice;
+    let note = "Google Finance";
+    
+    // 如果 Google 抓不到，啟動「Yahoo 救援隊」
+    if (!finalPrice || finalPrice <= 0 || isNaN(finalPrice)) {
+      note = "Yahoo Finance";
+      try {
+        if (market === 'TW') {
+           // 台股 Yahoo 代號通常是 2330.TW
+           finalPrice = fetchYahooPrice(symbol);
+        } else if (market === 'Crypto') {
+           // Crypto Yahoo 代號通常是 DOGE-USD
+           finalPrice = fetchYahooPrice(symbol);
+        } else if (market === 'US') {
+           finalPrice = fetchYahooPrice(symbol);
+        }
+      } catch (e) {
+         finalPrice = 0;
+      }
+
+      // 如果 Yahoo 也救不回來，最後才用成本
+      if (!finalPrice || finalPrice <= 0 || isNaN(finalPrice)) {
+        finalPrice = cost;
+        note = "Fallback to Cost";
+      }
     }
 
-    const val = qty * price;
-    totalValueTwd += (market === 'TW' ? val : val * exchangeRate);
+    const val = qty * finalPrice;
+    
+    // 安全計算
+    const safeVal = isNaN(val) ? 0 : val;
+    const rowValTwd = (market === 'TW' ? safeVal : safeVal * exchangeRate);
+    totalValueTwd += rowValTwd;
+    
+    debugRows.push([
+      symbol, 
+      qty, 
+      googlePrice || "Failed", 
+      finalPrice, 
+      rowValTwd,
+      market,
+      note
+    ]);
   }
-
-  // --- 4. 紀錄到 History (同一天自動覆蓋更新，但保護手動筆記) ---
+  
+  // 寫入 Debug 表格
+  if (debugRows.length > 0) {
+    debugSheet.getRange(2, 1, debugRows.length, 7).setValues(debugRows);
+  }
+  
+  // --- 4. 紀錄到 History ---
   const today = Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
   const lastRow = historySheet.getLastRow();
   
@@ -219,6 +272,24 @@ function recordDailySnapshot() {
   }
   historySheet.appendRow([today, totalValueTwd, "TWD", "Auto-snapshot"]);
 }
+
+/** 輔助用：從 Yahoo Finance API 抓取價格 **/
+function fetchYahooPrice(symbol) {
+  try {
+    // 簡單的 Yahoo Finance API 查詢
+    const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=1d";
+    const params = {muteHttpExceptions: true};
+    const response = UrlFetchApp.fetch(url, params);
+    const json = JSON.parse(response.getContentText());
+    if (json.chart && json.chart.result && json.chart.result.length > 0) {
+       return json.chart.result[0].meta.regularMarketPrice;
+    }
+  } catch (e) {
+    return 0;
+  }
+  return 0;
+}
+
 
 /** 輔助用：單筆抓取匯率 **/
 function GoogleFinance_Single(query) {
