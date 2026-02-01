@@ -46,7 +46,33 @@ export const priceService = {
     },
 
     async fetchPricesWeb(symbols: string[]): Promise<PriceResult[]> {
-        // Helper function to fetch with timeout
+        // Check for Cloudflare Worker proxy URL
+        const workerProxyUrl = import.meta.env.VITE_CORS_PROXY_URL;
+
+        // Helper function to fetch via Cloudflare Worker
+        const fetchViaWorker = async (url: string, timeoutMs = 5000): Promise<Response | null> => {
+            if (!workerProxyUrl) return null;
+
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+                const response = await fetch(workerProxyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url }),
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeout);
+                return response.ok ? response : null;
+            } catch (error) {
+                console.warn('⚠️ Worker proxy failed, falling back to free proxies');
+                return null;
+            }
+        };
+
+        // Helper function to fetch with timeout (for fallback proxies)
         const fetchWithTimeout = async (url: string, timeoutMs = 5000): Promise<Response> => {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -60,13 +86,10 @@ export const priceService = {
             }
         };
 
-        // Proxy list optimized for production (GitHub Pages)
-        const proxies = [
-            // Primary: Works reliably on GitHub Pages
+        // Fallback proxy list (used if worker fails or is not configured)
+        const fallbackProxies = [
             "https://api.codetabs.com/v1/proxy?quest=",
-            // Fallback 1: Alternative CORS proxy
             "https://api.allorigins.win/raw?url=",
-            // Fallback 2: Sometimes rate-limited but worth trying
             "https://corsproxy.io/?"
         ];
 
@@ -90,9 +113,54 @@ export const priceService = {
                 ? `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${sanitized.replace(".TW", "")}.tw&json=1&_=${timestamp}`
                 : `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d&_=${timestamp}`;
 
-            // Try each proxy
-            for (let i = 0; i < proxies.length; i++) {
-                const proxy = proxies[i];
+            // Try Cloudflare Worker first
+            const workerResponse = await fetchViaWorker(targetUrl);
+            if (workerResponse) {
+                try {
+                    const text = await workerResponse.text();
+                    let json: any;
+
+                    try {
+                        json = JSON.parse(text);
+                    } catch {
+                        // Try unwrapping if proxy wrapped the response
+                        try {
+                            const wrapped = JSON.parse(text);
+                            if (wrapped.contents) {
+                                json = JSON.parse(wrapped.contents);
+                            }
+                        } catch {
+                            // Continue to fallback proxies
+                        }
+                    }
+
+                    if (json) {
+                        if (sanitized.endsWith(".TW")) {
+                            if (json.msgArray && json.msgArray[0]) {
+                                const msg = json.msgArray[0];
+                                const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
+
+                                if (price > 0) {
+                                    console.log(`✓ ${symbol}: $${price} (via worker)`);
+                                    return { symbol, price };
+                                }
+                            }
+                        } else {
+                            const price = json.chart?.result?.[0]?.meta?.regularMarketPrice;
+                            if (price) {
+                                console.log(`✓ ${symbol}: $${price} (via worker)`);
+                                return { symbol, price };
+                            }
+                        }
+                    }
+                } catch {
+                    // Fall through to fallback proxies
+                }
+            }
+
+            // Try fallback proxies
+            for (let i = 0; i < fallbackProxies.length; i++) {
+                const proxy = fallbackProxies[i];
                 const fullUrl = proxy + encodeURIComponent(targetUrl);
 
                 try {
@@ -103,7 +171,7 @@ export const priceService = {
 
                     // Check for rate limit response
                     if (text.includes('Too many requests') || text.includes('rate limit')) {
-                        console.warn(`⚠️ Proxy ${i} rate limited for ${symbol}`);
+                        console.warn(`⚠️ Fallback proxy ${i} rate limited for ${symbol}`);
                         continue;
                     }
 
@@ -130,14 +198,14 @@ export const priceService = {
                             const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
 
                             if (price > 0) {
-                                console.log(`✓ ${symbol}: $${price}`);
+                                console.log(`✓ ${symbol}: $${price} (fallback proxy ${i})`);
                                 return { symbol, price };
                             }
                         }
                     } else {
                         const price = json.chart?.result?.[0]?.meta?.regularMarketPrice;
                         if (price) {
-                            console.log(`✓ ${symbol}: $${price}`);
+                            console.log(`✓ ${symbol}: $${price} (fallback proxy ${i})`);
                             return { symbol, price };
                         }
                     }

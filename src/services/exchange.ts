@@ -1,6 +1,43 @@
 import { db, type ExchangeConfig, type Asset } from '../db/database';
 
-const CORS_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+// Get worker proxy URL from environment, fallback to free proxy
+const WORKER_PROXY_URL = import.meta.env.VITE_CORS_PROXY_URL;
+const FALLBACK_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+
+// Helper function to fetch via worker or fallback proxy
+async function fetchWithProxy(url: string, options: RequestInit = {}): Promise<Response> {
+    // Try worker first
+    if (WORKER_PROXY_URL) {
+        try {
+            const response = await fetch(WORKER_PROXY_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...Object.fromEntries(
+                        Object.entries(options.headers || {}).filter(([k]) =>
+                            !['host', 'content-length'].includes(k.toLowerCase())
+                        )
+                    ),
+                },
+                body: JSON.stringify({
+                    url,
+                    method: options.method || 'GET',
+                    headers: options.headers,
+                }),
+            });
+
+            if (response.ok) {
+                console.log('✓ Using worker proxy for exchange API');
+                return response;
+            }
+        } catch (error) {
+            console.warn('⚠️ Worker proxy failed, using fallback for exchange API');
+        }
+    }
+
+    // Fallback to free proxy
+    return fetch(`${FALLBACK_PROXY}${encodeURIComponent(url)}`, options);
+}
 
 async function hmacSha256(secret: string, message: string) {
     const enc = new TextEncoder();
@@ -102,8 +139,8 @@ export const exchangeService = {
         const message = `${method}${path}?${query}`;
         const signature = await hmacSha256(secret, message);
 
-        const url = `${CORS_PROXY}${encodeURIComponent(`https://api.pionex.com${path}?${query}`)}`;
-        const res = await fetch(url, {
+        const url = `https://api.pionex.com${path}?${query}`;
+        const res = await fetchWithProxy(url, {
             headers: {
                 'PIONEX-KEY': key,
                 'PIONEX-SIGNATURE': signature,
@@ -142,8 +179,8 @@ export const exchangeService = {
         const payload = btoa(JSON.stringify({ nonce }));
         const signature = await hmacSha384(secret, payload);
 
-        const url = `${CORS_PROXY}${encodeURIComponent('https://api.bitopro.com/v3/accounts/balance')}`;
-        const res = await fetch(url, {
+        const url = 'https://api.bitopro.com/v3/accounts/balance';
+        const res = await fetchWithProxy(url, {
             headers: {
                 'X-BITOPRO-APIKEY': key,
                 'X-BITOPRO-PAYLOAD': payload,
