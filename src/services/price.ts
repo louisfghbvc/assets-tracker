@@ -93,21 +93,35 @@ export const priceService = {
             // Try each proxy
             for (let i = 0; i < proxies.length; i++) {
                 const proxy = proxies[i];
-                const fullUrl = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
+                const fullUrl = proxy + encodeURIComponent(targetUrl);
 
                 try {
                     const res = await fetchWithTimeout(fullUrl);
-                    if (!res.ok) {
+                    if (!res.ok) continue;
+
+                    const text = await res.text();
+
+                    // Check for rate limit response
+                    if (text.includes('Too many requests') || text.includes('rate limit')) {
+                        console.warn(`⚠️ Proxy ${i} rate limited for ${symbol}`);
                         continue;
                     }
 
-                    const text = await res.text();
                     let json: any;
                     try {
                         json = JSON.parse(text);
                     } catch {
-                        const wrapped = JSON.parse(text);
-                        json = JSON.parse(wrapped.contents);
+                        // Try unwrapping if proxy wrapped the response
+                        try {
+                            const wrapped = JSON.parse(text);
+                            if (wrapped.contents) {
+                                json = JSON.parse(wrapped.contents);
+                            } else {
+                                continue;
+                            }
+                        } catch {
+                            continue;
+                        }
                     }
 
                     if (sanitized.endsWith(".TW")) {
