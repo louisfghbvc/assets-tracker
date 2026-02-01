@@ -42,13 +42,15 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data, darkMode = true, m
                     autoScale: true,
                 },
                 handleScroll: {
-                    mouseWheel: true,
-                    pressedMouseMove: true,
+                    mouseWheel: false,
+                    pressedMouseMove: false,
+                    horzTouchDrag: false,
+                    vertTouchDrag: false,
                 },
                 handleScale: {
-                    axisPressedMouseMove: true,
-                    mouseWheel: true,
-                    pinch: true,
+                    axisPressedMouseMove: false,
+                    mouseWheel: false,
+                    pinch: false,
                 },
                 crosshair: {
                     mode: CrosshairMode.Normal,
