@@ -1,6 +1,6 @@
 import { db, type ExchangeConfig, type Asset } from '../db/database';
 
-const CORS_PROXY = "https://corsproxy.io/?";
+const CORS_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
 
 async function hmacSha256(secret: string, message: string) {
     const enc = new TextEncoder();

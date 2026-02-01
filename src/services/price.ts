@@ -60,15 +60,14 @@ export const priceService = {
             }
         };
 
-        // Updated proxy list with more reliable options
+        // Proxy list optimized for production (GitHub Pages)
         const proxies = [
-            // Try direct fetch first (works for some APIs)
-            "",
-            // Cloudflare CORS proxy
+            // Primary: Works reliably on GitHub Pages
             "https://api.codetabs.com/v1/proxy?quest=",
-            // Backup proxies
-            "https://corsproxy.io/?",
-            "https://api.allorigins.win/raw?url="
+            // Fallback 1: Alternative CORS proxy
+            "https://api.allorigins.win/raw?url=",
+            // Fallback 2: Sometimes rate-limited but worth trying
+            "https://corsproxy.io/?"
         ];
 
         const fetchSinglePrice = async (symbol: string): Promise<PriceResult | null> => {
@@ -213,10 +212,9 @@ export const priceService = {
         };
 
         const proxies = [
-            "",
             "https://api.codetabs.com/v1/proxy?quest=",
-            "https://corsproxy.io/?",
-            "https://api.allorigins.win/raw?url="
+            "https://api.allorigins.win/raw?url=",
+            "https://corsproxy.io/?"
         ];
 
         for (let i = 0; i < proxies.length; i++) {
