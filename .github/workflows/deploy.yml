@@ -28,6 +28,7 @@ jobs:
         env:
           # Make sure to add this in your Repo Settings -> Secrets and variables -> Actions
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_CORS_PROXY_URL: ${{ secrets.VITE_CORS_PROXY_URL }}
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
