@@ -180,14 +180,20 @@ export const priceService = {
             return null;
         };
 
-        // Fetch all prices in parallel with a concurrency limit
-        const BATCH_SIZE = 5; // Fetch 5 at a time to avoid overwhelming proxies
+        // Fetch prices with small batches and delays to avoid rate limits
+        const BATCH_SIZE = 2; // Reduced to 2 to avoid overwhelming free proxies
+        const BATCH_DELAY_MS = 500; // 0.5 second delay between batches
         const results: PriceResult[] = [];
 
         for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
             const batch = symbols.slice(i, i + BATCH_SIZE);
             const batchResults = await Promise.all(batch.map(fetchSinglePrice));
             results.push(...batchResults.filter((r): r is PriceResult => r !== null));
+
+            // Add delay between batches (except for the last batch)
+            if (i + BATCH_SIZE < symbols.length) {
+                await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+            }
         }
 
         return results;
