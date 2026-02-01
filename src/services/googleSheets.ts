@@ -1,5 +1,6 @@
 const SHEET_NAME = 'Portfolio';
 const CONFIG_SHEET_NAME = 'ExchangeConfigs';
+const HISTORY_SHEET_NAME = 'History';
 
 export interface GoogleSheetAsset {
     recordId: string;
@@ -19,6 +20,10 @@ export const googleSheetsService = {
 
     async fetchExchanges(accessToken: string, spreadsheetId: string) {
         return this.fetchSheetValues(accessToken, spreadsheetId, CONFIG_SHEET_NAME);
+    },
+
+    async fetchHistory(accessToken: string, spreadsheetId: string) {
+        return this.fetchSheetValues(accessToken, spreadsheetId, HISTORY_SHEET_NAME);
     },
 
     async fetchSheetValues(accessToken: string, spreadsheetId: string, sheetName: string) {
@@ -96,6 +101,25 @@ export const googleSheetsService = {
         return this.updateSheetValues(accessToken, spreadsheetId, CONFIG_SHEET_NAME, body, configs.length + 1, 'D');
     },
 
+    async updateHistory(accessToken: string, spreadsheetId: string, history: any[]) {
+        await this.ensureSheetExists(accessToken, spreadsheetId, HISTORY_SHEET_NAME);
+        const values = history.map(record => [
+            record.date,
+            record.totalValue,
+            record.currency,
+            record.note || ''
+        ]);
+
+        const body = {
+            values: [
+                ['Date', 'TotalValue', 'Currency', 'Note'],
+                ...values
+            ]
+        };
+
+        return this.updateSheetValues(accessToken, spreadsheetId, HISTORY_SHEET_NAME, body, history.length + 1, 'D');
+    },
+
     async updateSheetValues(accessToken: string, spreadsheetId: string, sheetName: string, body: any, rowCount: number, lastCol: string) {
         const response = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A1:${lastCol}${rowCount}?valueInputOption=USER_ENTERED`,
@@ -140,8 +164,8 @@ export const googleSheetsService = {
     },
 
     async clearSheet(accessToken: string, spreadsheetId: string) {
-        // Clear both sheets if they exist
-        for (const name of [SHEET_NAME, CONFIG_SHEET_NAME]) {
+        // Clear sheets if they exist
+        for (const name of [SHEET_NAME, CONFIG_SHEET_NAME, HISTORY_SHEET_NAME]) {
             // Check if sheet exists before clearing
             const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
                 headers: { Authorization: `Bearer ${accessToken}` }

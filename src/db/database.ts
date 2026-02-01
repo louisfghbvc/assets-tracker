@@ -29,10 +29,19 @@ export interface SyncLog {
     message?: string;
 }
 
+export interface HistoryRecord {
+    id?: number;
+    date: string; // YYYY-MM-DD
+    totalValue: number;
+    currency: string;
+    note?: string;
+}
+
 export class AssetTrackerDatabase extends Dexie {
     assets!: Table<Asset>;
     syncLogs!: Table<SyncLog>;
     exchangeConfigs!: Table<ExchangeConfig>;
+    history!: Table<HistoryRecord>;
 
     constructor() {
         super('AssetTrackerDB');
@@ -51,6 +60,10 @@ export class AssetTrackerDatabase extends Dexie {
                 else if (m === 'TW') asset.market = 'TW';
                 else if (m === 'US') asset.market = 'US';
             });
+        });
+
+        this.version(5).stores({
+            history: '++id, date'
         });
     }
 }

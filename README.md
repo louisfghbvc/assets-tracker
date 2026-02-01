@@ -88,12 +88,116 @@ VITE_GOOGLE_CLIENT_ID=您的_CLIENT_ID
 2. 點擊右上角選單或彈出的安裝提示。
 3. 選擇 **「安裝應用程式」**。
 
+## 📈 資產趨勢追蹤 (Asset Trend Tracking)
+
+本專案支援自動化資產紀錄趨勢圖，讓您可以視覺化地查看資產變化。
+
+### 核心機制
+*   **自動快照**：每次開啟 App 或點擊「更新市價」時，系統會自動儲存一份當下的資產總額。
+*   **趨勢圖表**：使用面積趨勢圖 (Area Chart) 展示資產隨時間的波動。
+*   **雲端同步**：趨勢紀錄會自動備份至 Google Sheets 的 `History` 分頁。
+
+---
+
+## 🤖 全自動化紀錄設定 (Google Apps Script)
+
+為了讓系統在您**不開啟 App** 的情況下也能每天自動紀錄資產，我們利用 Google 試算表內建的腳本功能。這對多使用者（如家人）特別方便。
+
+### 設定步驟 (100% 免費且自動)
+
+1.  **開啟試算表腳本**：
+    *   打開您的 Google 試算表 `AssetsTracker_DB`。
+    *   點擊選單列的 **「擴充功能」 (Extensions)** → **「Apps Script」**。
+    *   刪除視窗中原有的所有程式碼。
+
+2.  **貼上自動化腳本**：
+    *   將以下程式碼貼入編輯器中並儲存：
+
+```javascript
+/** 每日資產趨勢自動紀錄腳本 (動態報價版) **/
+function recordDailySnapshot() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const portfolioSheet = ss.getSheetByName('Portfolio');
+  let historySheet = ss.getSheetByName('History');
+
+  if (!portfolioSheet) return;
+  if (!historySheet) {
+    historySheet = ss.insertSheet('History');
+    historySheet.appendRow(['Date', 'TotalValue', 'Currency', 'Notes']);
+  }
+
+  // --- 1. 動態抓取實時匯率 ---
+  let exchangeRate = 32.5; 
+  try {
+    const response = UrlFetchApp.fetch("https://open.er-api.com/v6/latest/USD");
+    const json = JSON.parse(response.getContentText());
+    if (json && json.rates && json.rates.TWD) {
+      exchangeRate = json.rates.TWD;
+    } else {
+      const gfRate = GoogleFinance("CURRENCY:USDTWD");
+      if (gfRate) exchangeRate = gfRate;
+    }
+  } catch(e) {}
+
+  const data = portfolioSheet.getDataRange().getValues();
+  let totalValueTwd = 0;
+
+  // --- 2. 逐行計算資產總值 ---
+  for (let i = 1; i < data.length; i++) {
+    const symbol = data[i][1];
+    const market = data[i][4];
+    const qty = parseFloat(data[i][5]);
+    if (!symbol || isNaN(qty)) continue;
+
+    let price = 0;
+    try {
+      if (market === 'TW') {
+        const code = symbol.replace(".TW", "").replace(".TWO", "");
+        price = GoogleFinance("TPE:" + code, "price") || GoogleFinance("TWO:" + code, "price");
+      } else if (market === 'US') {
+        price = GoogleFinance(symbol, "price");
+      } else if (market === 'Crypto') {
+        const crypto = symbol.split('-')[0];
+        price = GoogleFinance("CURRENCY:" + crypto + "USD");
+      }
+    } catch(e) {}
+
+    const finalPrice = (price && price > 0) ? price : parseFloat(data[i][6]);
+    const val = qty * finalPrice;
+    totalValueTwd += (market === 'TW' ? val : val * exchangeRate);
+  }
+
+  // --- 3. 紀錄到 History (同一天自動覆蓋更新) ---
+  const today = Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
+  const lastRow = historySheet.getLastRow();
+  
+  if (lastRow > 1) {
+    const lastDate = Utilities.formatDate(historySheet.getRange(lastRow, 1).getValue(), "GMT+8", "yyyy-MM-dd");
+    if (lastDate === today) {
+      historySheet.getRange(lastRow, 2).setValue(totalValueTwd);
+      historySheet.getRange(lastRow, 4).setValue("Auto-updated at " + new Date().toLocaleTimeString());
+      return;
+    }
+  }
+  historySheet.appendRow([today, totalValueTwd, "TWD", "Auto-snapshot"]);
+}
+```
+
+3.  **設定定時執行 (鬧鐘)**：
+    *   在視窗左側點擊 **「觸發條件」 (Triggers, 鬧鐘圖示)**。
+    *   點擊 **「＋ 新增觸發條件」**。
+    *   選擇 `recordDailySnapshot` -> `時間驅動` -> `日計時器` -> `晚上 11 點到 12 點`。
+    *   儲存並完成 Google 帳號授權即可。
+
+---
+
 ## 🛠 技術架構 (Architecture)
 
 *   **核心框架**: [Tauri v2](https://v2.tauri.app/)
 *   **前端**: React + TypeScript + Vite + Vanilla CSS
 *   **本地資料庫**: [Dexie.js](https://dexie.org/) (IndexedDB wrapper)
 *   **雲端同步**: Google Sheets API v4 + Google Drive API v3
+*   **圖表庫**: [Lightweight Charts](https://tradingview.github.io/lightweight-charts/) (用於趨勢圖)
 *   **PWA 支援**: `vite-plugin-pwa`
 *   **UI 組件**: Lucide React + Recharts
 

@@ -9,6 +9,7 @@ export const syncService = {
 
             const localAssets = await db.assets.toArray();
             const localExchanges = await db.exchangeConfigs.toArray();
+            const localHistory = await db.history.toArray();
 
             // Patch missing recordIds for legacy data
             for (const asset of localAssets) {
@@ -23,6 +24,7 @@ export const syncService = {
             await googleSheetsService.clearSheet(accessToken, spreadsheetId);
             await googleSheetsService.updatePortfolio(accessToken, spreadsheetId, localAssets);
             await googleSheetsService.updateExchanges(accessToken, spreadsheetId, localExchanges);
+            await googleSheetsService.updateHistory(accessToken, spreadsheetId, localHistory);
 
             await db.syncLogs.add({
                 lastSyncTime: Date.now(),
@@ -50,18 +52,25 @@ export const syncService = {
             const exchangeRows = await googleSheetsService.fetchExchanges(accessToken, spreadsheetId);
             const importedExchanges = this.parseExchangeRows(exchangeRows);
 
-            // 3. Update local database
-            await db.transaction('rw', db.assets, db.exchangeConfigs, db.syncLogs, async () => {
+            // 3. Fetch History
+            const historyRows = await googleSheetsService.fetchHistory(accessToken, spreadsheetId);
+            const importedHistory = this.parseHistoryRows(historyRows);
+
+            // 4. Update local database
+            await db.transaction('rw', db.assets, db.exchangeConfigs, db.syncLogs, db.history, async () => {
                 await db.assets.clear();
                 if (portfolioAssets.length > 0) await db.assets.bulkAdd(portfolioAssets);
 
                 await db.exchangeConfigs.clear();
                 if (importedExchanges.length > 0) await db.exchangeConfigs.bulkAdd(importedExchanges);
 
+                await db.history.clear();
+                if (importedHistory.length > 0) await db.history.bulkAdd(importedHistory);
+
                 await db.syncLogs.add({
                     lastSyncTime: Date.now(),
                     status: 'success',
-                    message: `Restored ${portfolioAssets.length} assets and ${importedExchanges.length} exchanges`
+                    message: `Restored ${portfolioAssets.length} assets, ${importedExchanges.length} exchanges, and ${importedHistory.length} history records`
                 });
             });
 
@@ -186,5 +195,39 @@ export const syncService = {
                 lastSynced: parseInt(row[colMap.lastSynced]) || 0
             };
         }).filter(c => c !== null);
+    },
+
+    parseHistoryRows(allRows: any[]) {
+        if (allRows.length === 0) return [];
+
+        let headerIndex = -1;
+        let colMap: Record<string, number> = {};
+
+        for (let i = 0; i < Math.min(allRows.length, 5); i++) {
+            const row = allRows[i].map((c: any) => c.toString().toLowerCase().trim());
+            if (row.includes('date')) {
+                headerIndex = i;
+                row.forEach((cell: string, idx: number) => {
+                    if (cell.includes('date')) colMap.date = idx;
+                    if (cell.includes('value')) colMap.totalValue = idx;
+                    if (cell.includes('currency')) colMap.currency = idx;
+                    if (cell.includes('note')) colMap.note = idx;
+                });
+                break;
+            }
+        }
+
+        if (headerIndex === -1) return [];
+
+        const dataRows = allRows.slice(headerIndex + 1);
+        return dataRows.map((row: any) => {
+            if (!row[colMap.date] || !row[colMap.totalValue]) return null;
+            return {
+                date: row[colMap.date].toString().trim(),
+                totalValue: parseFloat(row[colMap.totalValue].toString().replace(/,/g, '')) || 0,
+                currency: row[colMap.currency]?.toString().trim() || 'TWD',
+                note: colMap.note !== undefined ? row[colMap.note]?.toString().trim() : undefined
+            };
+        }).filter(h => h !== null);
     }
 };

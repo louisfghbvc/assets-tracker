@@ -36,6 +36,8 @@ import AddAssetModal from "./components/AddAssetModal";
 import EditAssetModal from "./components/EditAssetModal";
 import { translations, Language } from "./translations";
 import { PriceChart } from "./components/PriceChart";
+import { historyService } from "./services/history";
+import { TrendChart } from "./components/TrendChart";
 
 const failedLogos = new Set<string>();
 
@@ -101,7 +103,7 @@ function App() {
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
   const [chartAsset, setChartAsset] = useState<any | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'settings'>('assets');
+  const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'trend' | 'settings'>('assets');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
   const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
@@ -110,6 +112,10 @@ function App() {
     return localStorage.getItem("hideValues") === "true";
   });
   const [hasInitialRefreshed, setHasInitialRefreshed] = useState(false);
+  const [trendMode, setTrendMode] = useState<'value' | 'percent'>('value');
+  const [trendRange, setTrendRange] = useState<'1W' | '1M' | '3M' | '1Y' | 'MAX'>('MAX');
+  const [isEditingNote, setIsEditingNote] = useState<number | null>(null);
+  const [noteContent, setNoteContent] = useState('');
 
   // Persist hideValues
   useEffect(() => {
@@ -159,14 +165,21 @@ function App() {
 
   const initialRefreshStarted = useRef(false);
 
-  // Auto-refresh on startup when token is available
+  // Auto-refresh on startup to update prices and record history
   useEffect(() => {
-    if (accessToken && !hasInitialRefreshed && !initialRefreshStarted.current) {
-      initialRefreshStarted.current = true;
-      setHasInitialRefreshed(true);
-      handleRefresh();
-    }
-  }, [accessToken, hasInitialRefreshed]);
+    const checkAndRefresh = async () => {
+      if (!hasInitialRefreshed && !initialRefreshStarted.current) {
+        // Only refresh if we have assets
+        const assetCount = await db.assets.count();
+        if (assetCount > 0) {
+          initialRefreshStarted.current = true;
+          setHasInitialRefreshed(true);
+          handleRefresh();
+        }
+      }
+    };
+    checkAndRefresh();
+  }, [hasInitialRefreshed]);
 
   const fetchUserProfile = async (token: string) => {
     try {
@@ -190,6 +203,23 @@ function App() {
   };
 
   const assets = useLiveQuery(() => db.assets.toArray());
+  const history = useLiveQuery(() => historyService.getHistory());
+
+  const filteredHistory = useMemo(() => {
+    if (!history) return [];
+    if (trendRange === 'MAX') return history;
+
+    const now = new Date();
+    const rangeMs = {
+      '1W': 7 * 24 * 60 * 60 * 1000,
+      '1M': 30 * 24 * 60 * 60 * 1000,
+      '3M': 90 * 24 * 60 * 60 * 1000,
+      '1Y': 365 * 24 * 60 * 60 * 1000,
+    }[trendRange];
+
+    const cutoffDate = new Date(now.getTime() - rangeMs).toISOString().split('T')[0];
+    return history.filter(h => h.date >= cutoffDate);
+  }, [history, trendRange]);
 
   const mergedAssets = useMemo(() => {
     if (!assets) return [];
@@ -425,7 +455,7 @@ function App() {
       }
 
       setSyncStatus(t('refreshingPrices'));
-      await fetchExchangeRate();
+      const activeRate = await fetchExchangeRate();
       const allAssets = await db.assets.toArray();
       const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
 
@@ -448,6 +478,19 @@ function App() {
       }
 
       setSyncStatus(t('refreshComplete'));
+
+      // Save a snapshot of the current balance to history
+      // Re-fetch assets to get updated prices
+      const updatedAssets = await db.assets.toArray();
+      const currentBalance = updatedAssets.reduce((sum, asset) => {
+        const val = asset.currentPrice || 0;
+        const valTwd = asset.market === 'TW' ? val * asset.quantity : val * asset.quantity * activeRate;
+        return sum + valTwd;
+      }, 0);
+
+      if (currentBalance > 0) {
+        await historyService.saveDailySnapshot(currentBalance);
+      }
     } catch (e) {
       console.error("Refresh failed:", e);
       setSyncStatus(t('refreshFailed'));
@@ -977,6 +1020,120 @@ function App() {
           </section>
         )
       }
+      {
+        activeTab === 'trend' && (
+          <section className="trend-view animate-fade-in">
+            <div className="card trend-container">
+              <div className="trend-header">
+                <h2 className="view-title">{t('assetTrend')}</h2>
+                <div className="trend-controls">
+                  <div className="range-selector">
+                    {(['1W', '1M', '3M', '1Y', 'MAX'] as const).map(r => (
+                      <button
+                        key={r}
+                        className={`range-btn ${trendRange === r ? 'active' : ''}`}
+                        onClick={() => setTrendRange(r)}
+                      >
+                        {t(`range${r}` as any)}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mode-toggle">
+                    <button
+                      className={`mode-btn ${trendMode === 'value' ? 'active' : ''}`}
+                      onClick={() => setTrendMode('value')}
+                    >
+                      {t('total')}
+                    </button>
+                    <button
+                      className={`mode-btn ${trendMode === 'percent' ? 'active' : ''}`}
+                      onClick={() => setTrendMode('percent')}
+                    >
+                      {t('profitPercent')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {filteredHistory && filteredHistory.length > 0 ? (
+                <>
+                  <TrendChart data={filteredHistory} darkMode={true} mode={trendMode} />
+
+                  <div className="recent-history-list">
+                    <h3>{t('recentHistory')}</h3>
+                    <div className="history-table-header">
+                      <span>{t('date')}</span>
+                      <span>{t('value')}</span>
+                      <span>{t('change')}</span>
+                    </div>
+                    {filteredHistory.slice().reverse().slice(0, 15).map((record, index, array) => {
+                      // Find previous record in full history to calculate change
+                      const fullIndex = history?.findIndex(h => h.id === record.id) ?? -1;
+                      const prevRecord = fullIndex > 0 ? history?.[fullIndex - 1] : null;
+
+                      const change = prevRecord ? record.totalValue - prevRecord.totalValue : 0;
+                      const changePercent = prevRecord ? (change / prevRecord.totalValue * 100).toFixed(1) : '0.0';
+
+                      return (
+                        <div key={record.id} className="history-item-container">
+                          <div className="history-row">
+                            <span className="history-date">{record.date}</span>
+                            <span className="history-value">{displayValue(record.totalValue, '$')}</span>
+                            <span className={`history-change ${change >= 0 ? 'positive' : 'negative'}`}>
+                              {change !== 0 ? `${change > 0 ? '+' : ''}${change.toLocaleString()} (${changePercent}%)` : '-'}
+                            </span>
+                          </div>
+
+                          <div className="history-note-section">
+                            {isEditingNote === record.id ? (
+                              <div className="note-edit-box">
+                                <input
+                                  autoFocus
+                                  className="note-input"
+                                  value={noteContent}
+                                  onChange={(e) => setNoteContent(e.target.value)}
+                                  placeholder={t('notePlaceholder')}
+                                  onBlur={async () => {
+                                    if (record.id) {
+                                      await historyService.updateNote(record.id, noteContent);
+                                    }
+                                    setIsEditingNote(null);
+                                  }}
+                                  onKeyDown={async (e) => {
+                                    if (e.key === 'Enter' && record.id) {
+                                      await historyService.updateNote(record.id, noteContent);
+                                      setIsEditingNote(null);
+                                    }
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <div
+                                className={`history-note ${!record.note ? 'empty' : ''}`}
+                                onClick={() => {
+                                  setIsEditingNote(record.id || null);
+                                  setNoteContent(record.note || '');
+                                }}
+                              >
+                                {record.note || `+ ${t('addNote')}`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '60px 20px', opacity: 0.5 }}>
+                  <TrendingUp size={64} style={{ marginBottom: '20px' }} />
+                  <p>{t('noData')}</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )
+      }
 
       {/* Modal */}
       <AddAssetModal
@@ -996,12 +1153,16 @@ function App() {
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">
         <div className={`tab-item ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>
-          <TrendingUp size={24} />
+          <Wallet size={24} />
           <span>{t('assets')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           <PieChart size={24} />
           <span>{t('stats')}</span>
+        </div>
+        <div className={`tab-item ${activeTab === 'trend' ? 'active' : ''}`} onClick={() => setActiveTab('trend')}>
+          <TrendingUp size={24} />
+          <span>{t('trend')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
           <GanttChartSquare size={24} />
