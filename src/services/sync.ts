@@ -64,8 +64,34 @@ export const syncService = {
                 await db.exchangeConfigs.clear();
                 if (importedExchanges.length > 0) await db.exchangeConfigs.bulkAdd(importedExchanges);
 
+                // --- History Merge Logic ---
+                const localHistory = await db.history.toArray();
+                const mergedHistory = [...importedHistory];
+
+                // Check local records for notes that might not be in the cloud
+                for (const localRec of localHistory) {
+                    const cloudMatchIdx = mergedHistory.findIndex(h => h.date === localRec.date);
+
+                    if (cloudMatchIdx === -1) {
+                        // Cloud doesn't have this date, but local does. Keep it!
+                        mergedHistory.push(localRec);
+                    } else if (localRec.note && localRec.note.trim() !== '' && !localRec.note.startsWith('Auto-')) {
+                        // Both have the date, but LOCAL has a MANUAL note.
+                        // We should prioritize the local note if the cloud note is auto or empty
+                        const cloudRec = mergedHistory[cloudMatchIdx];
+                        if (!cloudRec.note || cloudRec.note.trim() === '' || cloudRec.note.startsWith('Auto-')) {
+                            mergedHistory[cloudMatchIdx] = {
+                                ...cloudRec,
+                                note: localRec.note
+                            };
+                        }
+                    }
+                }
+
                 await db.history.clear();
-                if (importedHistory.length > 0) await db.history.bulkAdd(importedHistory);
+                if (mergedHistory.length > 0) {
+                    await db.history.bulkAdd(mergedHistory);
+                }
 
                 await db.syncLogs.add({
                     lastSyncTime: Date.now(),

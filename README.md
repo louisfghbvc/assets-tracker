@@ -167,7 +167,7 @@ function recordDailySnapshot() {
     totalValueTwd += (market === 'TW' ? val : val * exchangeRate);
   }
 
-  // --- 3. 紀錄到 History (同一天自動覆蓋更新) ---
+  // --- 3. 紀錄到 History (同一天自動覆蓋更新，但保護手動筆記) ---
   const today = Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
   const lastRow = historySheet.getLastRow();
   
@@ -175,7 +175,12 @@ function recordDailySnapshot() {
     const lastDate = Utilities.formatDate(historySheet.getRange(lastRow, 1).getValue(), "GMT+8", "yyyy-MM-dd");
     if (lastDate === today) {
       historySheet.getRange(lastRow, 2).setValue(totalValueTwd);
-      historySheet.getRange(lastRow, 4).setValue("Auto-updated at " + new Date().toLocaleTimeString());
+      
+      // 只有在備註是空的，或者是自動產生的時候才更新備註
+      const currentNote = historySheet.getRange(lastRow, 4).getValue();
+      if (!currentNote || currentNote.indexOf("Auto-") === 0) {
+        historySheet.getRange(lastRow, 4).setValue("Auto-updated at " + new Date().toLocaleTimeString());
+      }
       return;
     }
   }
