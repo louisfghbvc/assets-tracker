@@ -1,10 +1,8 @@
 # price-service Specification
 
 ## Purpose
-TBD - modified by change add-cloudflare-workers-proxy. Update Purpose after implementation.
-
-## MODIFIED Requirements
-
+TBD - created by archiving change add-cloudflare-workers-proxy. Update Purpose after archive.
+## Requirements
 ### Requirement: Proxy Selection Strategy
 The price service SHALL prioritize the Cloudflare Worker proxy when available, falling back to free third-party proxies only when the worker is unavailable.
 
@@ -36,3 +34,4 @@ The price service SHALL achieve 100% success rate when using the Cloudflare Work
 - **When** syncing Pionex or BitoPro accounts
 - **Then** API requests should succeed 100% of the time
 - **And** balances should be correctly updated
+
