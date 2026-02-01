@@ -47,12 +47,14 @@ curl -X POST https://localhost:8787/proxy \
 **Dependencies**: 1.2  
 **Estimated Time**: 15 minutes
 
-- [ ] Deploy worker using `wrangler publish`
-- [ ] Verify worker is accessible at `https://YOUR_NAME.workers.dev/proxy`
-- [ ] Test with production Yahoo Finance and TWSE endpoints
-- [ ] Record worker URL for environment configuration
+- [x] Deploy worker using `wrangler publish`
+- [x] Verify worker is accessible at `https://YOUR_NAME.workers.dev/proxy`
+- [x] Test with production Yahoo Finance and TWSE endpoints
+- [x] Record worker URL for environment configuration
 
 **Validation**: Worker publicly accessible and returns correct CORS headers
+
+**✅ Completed**: Worker deployed at `https://assettracker-cors-proxy.louisfghbvc.workers.dev/proxy`
 
 ---
 
