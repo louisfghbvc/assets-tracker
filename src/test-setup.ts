@@ -3,8 +3,8 @@ import { vi } from 'vitest';
 import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
 
 // Mock IndexedDB
-global.indexedDB = indexedDB;
-global.IDBKeyRange = IDBKeyRange;
+globalThis.indexedDB = indexedDB;
+globalThis.IDBKeyRange = IDBKeyRange;
 
 // Mock Tauri APIs
 vi.mock('@tauri-apps/api', () => ({
@@ -16,7 +16,7 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
 }));
 
 // Mock ResizeObserver for Recharts
-global.ResizeObserver = class ResizeObserver {
+globalThis.ResizeObserver = class ResizeObserver {
     observe() { }
     unobserve() { }
     disconnect() { }
@@ -32,4 +32,4 @@ const localStorageMock = (() => {
         removeItem: (key: string) => { delete store[key]; },
     };
 })();
-Object.defineProperty(global, 'localStorage', { value: localStorageMock });
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });

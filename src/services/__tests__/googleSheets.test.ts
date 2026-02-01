@@ -4,7 +4,7 @@ import { googleSheetsService } from '../googleSheets';
 describe('googleSheetsService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        global.fetch = vi.fn();
+        globalThis.fetch = vi.fn();
         localStorage.clear();
     });
 
@@ -13,7 +13,7 @@ describe('googleSheetsService', () => {
         const mockAccessToken = 'token-123';
         localStorage.setItem('google_spreadsheet_id', mockSpreadsheetId);
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             ok: true,
             status: 200,
             json: async () => ({ id: mockSpreadsheetId, trashed: false }),
@@ -22,7 +22,7 @@ describe('googleSheetsService', () => {
         const result = await googleSheetsService.findOrCreateSpreadsheet(mockAccessToken);
 
         expect(result).toBe(mockSpreadsheetId);
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(globalThis.fetch).toHaveBeenCalledWith(
             expect.stringContaining(`files/${mockSpreadsheetId}`),
             expect.objectContaining({
                 headers: { Authorization: `Bearer ${mockAccessToken}` }
@@ -34,7 +34,7 @@ describe('googleSheetsService', () => {
         const mockSpreadsheetId = 'drive-id-456';
         const mockAccessToken = 'token-123';
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             ok: true,
             status: 200,
             json: async () => ({
@@ -49,7 +49,7 @@ describe('googleSheetsService', () => {
     });
 
     it('should throw UNAUTHORIZED when API returns 401', async () => {
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             status: 401,
         });
 
@@ -58,7 +58,7 @@ describe('googleSheetsService', () => {
     });
 
     it('should return empty array when sheet does not exist', async () => {
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             ok: true,
             status: 200,
             json: async () => ({ sheets: [] }),
@@ -73,7 +73,7 @@ describe('googleSheetsService', () => {
             { recordId: 'r1', symbol: 'AAPL', name: 'Apple', type: 'stock', market: 'US', quantity: 10, cost: 150, lastUpdated: 123456, source: 'manual' }
         ];
 
-        (global.fetch as any).mockImplementation((url: string) => {
+        (globalThis.fetch as any).mockImplementation((url: string) => {
             if (url.includes('batchUpdate')) {
                 return Promise.resolve({ ok: true, json: async () => ({}) });
             }
@@ -85,7 +85,7 @@ describe('googleSheetsService', () => {
 
         await googleSheetsService.updatePortfolio('token', 'id', mockAssets);
 
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(globalThis.fetch).toHaveBeenCalledWith(
             expect.stringContaining('values/Portfolio'),
             expect.objectContaining({
                 method: 'PUT',
@@ -102,7 +102,7 @@ describe('googleSheetsService', () => {
             { exchangeName: 'pionex', apiKey: 'key1', apiSecret: 'secret1', lastSynced: 123456 }
         ];
 
-        (global.fetch as any).mockImplementation((url: string) => {
+        (globalThis.fetch as any).mockImplementation((url: string) => {
             if (url.includes('batchUpdate')) {
                 return Promise.resolve({ ok: true, json: async () => ({}) });
             }
@@ -114,14 +114,14 @@ describe('googleSheetsService', () => {
 
         await googleSheetsService.updateExchanges('token', 'id', mockConfigs);
 
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(globalThis.fetch).toHaveBeenCalledWith(
             expect.stringContaining('values/ExchangeConfigs'),
             expect.any(Object)
         );
     });
 
     it('should create new sheet if it does not exist', async () => {
-        (global.fetch as any).mockImplementation((url: string) => {
+        (globalThis.fetch as any).mockImplementation((url: string) => {
             if (url.includes('batchUpdate')) {
                 return Promise.resolve({ ok: true, json: async () => ({}) });
             }
@@ -130,7 +130,7 @@ describe('googleSheetsService', () => {
 
         await googleSheetsService.ensureSheetExists('token', 'id', 'NewSheet');
 
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(globalThis.fetch).toHaveBeenCalledWith(
             expect.stringContaining('batchUpdate'),
             expect.objectContaining({
                 method: 'POST',
@@ -140,24 +140,24 @@ describe('googleSheetsService', () => {
     });
 
     it('should clear sheet data correctly', async () => {
-        (global.fetch as any).mockImplementation((url: string) => {
+        (globalThis.fetch as any).mockImplementation((url: string) => {
             if (url.includes('fields=sheets')) {
                 return Promise.resolve({ ok: true, status: 200, json: async () => ({ sheets: [{ properties: { title: 'Portfolio' } }] }) });
             }
             return Promise.resolve({ ok: true, json: async () => ({}), status: 200 });
         });
 
-        await googleSheetsService.clearSheet('token', 'id', 'Portfolio');
+        await googleSheetsService.clearSheet('token', 'id');
 
         // Check that the clear operation was called
-        const putCall = (global.fetch as any).mock.calls.find((call: any) =>
+        const putCall = (globalThis.fetch as any).mock.calls.find((call: any) =>
             call[1]?.method === 'POST' && call[0].includes(':clear')
         );
         expect(putCall).toBeDefined();
     });
 
     it('should create new spreadsheet when none found in Drive', async () => {
-        (global.fetch as any).mockImplementation((url: string, options: any) => {
+        (globalThis.fetch as any).mockImplementation((url: string, options: any) => {
             if (url.includes('files?q=')) {
                 return Promise.resolve({ ok: true, status: 200, json: async () => ({ files: [] }) });
             }

@@ -4,7 +4,7 @@ import { exchangeService } from '../exchange';
 describe('exchangeService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        global.fetch = vi.fn();
+        globalThis.fetch = vi.fn() as any;
         // crypto is already available in jsdom or can be mocked
     });
 
@@ -20,7 +20,7 @@ describe('exchangeService', () => {
             }
         };
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => mockPionexResp,
         });
 
@@ -41,7 +41,7 @@ describe('exchangeService', () => {
             ]
         };
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => mockBitoResp,
         });
 
@@ -55,7 +55,7 @@ describe('exchangeService', () => {
     });
 
     it('should handle empty Pionex balances', async () => {
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => ({ result: true, data: { balances: [] } }),
         });
 
@@ -64,14 +64,14 @@ describe('exchangeService', () => {
     });
 
     it('should handle fetchPionex API errors', async () => {
-        (global.fetch as any).mockRejectedValue(new Error('Network error'));
+        (globalThis.fetch as any).mockRejectedValue(new Error('Network error'));
 
         await expect(exchangeService.fetchPionex('key', 'secret'))
             .rejects.toThrow();
     });
 
     it('should handle fetchBitoPro API errors', async () => {
-        (global.fetch as any).mockRejectedValue(new Error('Network error'));
+        (globalThis.fetch as any).mockRejectedValue(new Error('Network error'));
 
         await expect(exchangeService.fetchBitoPro('key', 'secret'))
             .rejects.toThrow();
@@ -88,7 +88,7 @@ describe('exchangeService', () => {
             }
         };
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => mockResp,
         });
 

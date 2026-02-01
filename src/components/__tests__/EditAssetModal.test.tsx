@@ -48,9 +48,7 @@ describe('EditAssetModal', () => {
         render(
             <EditAssetModal isOpen={true} onClose={mockOnClose} asset={mockAsset} t={mockT as any} />
         );
-        const closeBtn = screen.getByRole('button', { name: '' }); // The X icon button
-        // React Testing Library might find multiple buttons, let's be more specific if needed
-        // But here close-btn is the first one in the header
+        // The X icon button is the first button in the header
         fireEvent.click(screen.getAllByRole('button')[0]);
         expect(mockOnClose).toHaveBeenCalled();
     });

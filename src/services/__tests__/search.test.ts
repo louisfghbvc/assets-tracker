@@ -4,7 +4,7 @@ import { searchService } from '../search';
 describe('searchService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        global.fetch = vi.fn();
+        globalThis.fetch = vi.fn();
     });
 
     it('should return empty results if query is empty', async () => {
@@ -17,7 +17,7 @@ describe('searchService', () => {
             suggestions: ["2330 台積電", "2331 某股票"]
         };
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => mockResponse,
         });
 
@@ -39,7 +39,7 @@ describe('searchService', () => {
             ]
         };
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => mockResponse,
         });
 
@@ -83,11 +83,11 @@ describe('searchService', () => {
             ]
         };
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => mockYahooResp,
         });
 
-        const results = await searchService.searchYahoo('AAPL');
+        const results = await searchService.searchYahoo('AAPL', 'US');
 
         expect(results.length).toBeGreaterThan(0);
         expect(results[0].symbol).toBe('AAPL');
@@ -100,29 +100,29 @@ describe('searchService', () => {
             ]
         };
 
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => mockYahooResp,
         });
 
-        const results = await searchService.searchYahoo('BTC');
+        const results = await searchService.searchYahoo('BTC', 'Crypto');
 
         expect(results.length).toBeGreaterThan(0);
         expect(results[0].type).toBe('crypto');
     });
 
     it('should handle empty Yahoo response', async () => {
-        (global.fetch as any).mockResolvedValue({
+        (globalThis.fetch as any).mockResolvedValue({
             json: async () => ({ quotes: [] }),
         });
 
-        const results = await searchService.searchYahoo('INVALID');
+        const results = await searchService.searchYahoo('INVALID', 'US');
         expect(results).toEqual([]);
     });
 
     it('should handle fetch errors gracefully', async () => {
-        (global.fetch as any).mockRejectedValue(new Error('Network error'));
+        (globalThis.fetch as any).mockRejectedValue(new Error('Network error'));
 
-        const results = await searchService.searchYahoo('TEST');
+        const results = await searchService.searchYahoo('TEST', 'US');
         expect(results).toEqual([]);
     });
 });

@@ -4,14 +4,14 @@ import { priceService } from '../price';
 describe('priceService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        global.fetch = vi.fn();
+        globalThis.fetch = vi.fn();
         // Simulate web environment (no Tauri)
         delete (window as any).__TAURI_INTERNALS__;
     });
 
     describe('fetchExchangeRate', () => {
         it('should return exchange rate from API in web mode', async () => {
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 json: async () => ({ rates: { TWD: 31.5 } }),
             });
 
@@ -20,7 +20,7 @@ describe('priceService', () => {
         });
 
         it('should return fallback rate if fetch fails', async () => {
-            (global.fetch as any).mockRejectedValue(new Error('API Down'));
+            (globalThis.fetch as any).mockRejectedValue(new Error('API Down'));
 
             const rate = await priceService.fetchExchangeRate();
             expect(rate).toBe(32.5);
@@ -43,7 +43,7 @@ describe('priceService', () => {
                 }
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockYahooResp),
             });
@@ -58,7 +58,7 @@ describe('priceService', () => {
                 msgArray: [{ z: '600.0', b: '599.0_10', y: '598.0' }]
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockTwseResp),
             });
@@ -77,7 +77,7 @@ describe('priceService', () => {
                 }
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockYahooResp),
             });
@@ -94,7 +94,7 @@ describe('priceService', () => {
                 msgArray: [{ z: '-', b: '599.0_10', y: '598.0' }]
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockTwseResp),
             });
@@ -119,29 +119,29 @@ describe('priceService', () => {
                 }
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockHistoryResp),
             });
 
-            const results = await priceService.fetchHistoryWeb('AAPL', '1d');
+            const results = await priceService.fetchHistoryWeb('AAPL', '1d', '1d');
             expect(results.length).toBeGreaterThanOrEqual(0);
         });
 
         it('should return empty array on fetch error', async () => {
-            (global.fetch as any).mockRejectedValue(new Error('API Down'));
+            (globalThis.fetch as any).mockRejectedValue(new Error('API Down'));
 
-            const results = await priceService.fetchHistoryWeb('AAPL', '1d');
+            const results = await priceService.fetchHistoryWeb('AAPL', '1d', '1d');
             expect(results).toEqual([]);
         });
 
         it('should handle missing chart data gracefully', async () => {
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify({ chart: { result: null } }),
             });
 
-            const results = await priceService.fetchHistoryWeb('INVALID', '1d');
+            const results = await priceService.fetchHistoryWeb('INVALID', '1d', '1d');
             expect(results).toEqual([]);
         });
 
@@ -154,7 +154,7 @@ describe('priceService', () => {
                 }
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockYahooResp),
             });
@@ -178,7 +178,7 @@ describe('priceService', () => {
                 }
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockYahooResp),
             });
@@ -211,7 +211,7 @@ describe('priceService', () => {
                 }
             };
 
-            (global.fetch as any).mockResolvedValue({
+            (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
                 text: async () => JSON.stringify(mockHistoryResp),
             });

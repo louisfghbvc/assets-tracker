@@ -48,10 +48,9 @@ describe('AddAssetModal', () => {
 
     it('should call onClose when close button is clicked', () => {
         render(<AddAssetModal {...mockProps} />);
-        const closeBtn = screen.getByRole('button', { name: '' }); // Lucide X button might not have text
-        // Alternative: find by SVG or specific class if needed, but let's try finding the button
+        // Lucide X button is usually the first button in the header
         const buttons = screen.getAllByRole('button');
-        const xButton = buttons[0]; // Usually the first one in the header
+        const xButton = buttons[0];
         fireEvent.click(xButton);
         expect(mockProps.onClose).toHaveBeenCalled();
     });
