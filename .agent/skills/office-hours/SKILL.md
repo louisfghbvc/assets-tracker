@@ -1,0 +1,1 @@
+/Users/louisfghbvc/Coding/assets-tracker/.agent/skills/gstack/office-hours/SKILL.md

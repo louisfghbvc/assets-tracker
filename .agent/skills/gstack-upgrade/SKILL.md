@@ -1,0 +1,1 @@
+/Users/louisfghbvc/Coding/assets-tracker/.agent/skills/gstack/gstack-upgrade/SKILL.md

@@ -1,0 +1,1 @@
+/Users/louisfghbvc/Coding/assets-tracker/.agent/skills/gstack/plan-ceo-review/SKILL.md
