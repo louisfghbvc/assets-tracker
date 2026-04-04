@@ -125,7 +125,7 @@ function App() {
   // Helper to mask values
   const displayValue = (value: string | number, prefix: string = "") => {
     if (hideValues) return "****";
-    return typeof value === "number" ? `${prefix}${value.toLocaleString()}` : `${prefix}${value}`;
+    return typeof value === "number" ? `${prefix}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `${prefix}${value}`;
   };
 
   const compactDisplayValue = (value: number, prefix: string = "") => {

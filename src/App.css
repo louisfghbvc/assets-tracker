@@ -150,14 +150,14 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .action-btn {
   background: var(--surface);
   border: 1px solid var(--glass-border);
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   border-radius: 16px;
   color: var(--text-muted);
   display: flex;
@@ -508,18 +508,18 @@ body {
 }
 
 .stat-card-label {
-  font-size: 0.85rem;
-  color: #fff;
-  /* Increased from muted to white for visibility */
-  font-weight: 700;
-  opacity: 0.8;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .stat-card-value {
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   color: #fff;
+  letter-spacing: -0.02em;
 }
 
 @media (max-width: 480px) {
