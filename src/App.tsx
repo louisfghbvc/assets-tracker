@@ -28,6 +28,7 @@ import "./App.css";
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type Asset, type SellRecord } from "./db/database";
+import { PerformanceView } from "./components/PerformanceView";
 import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
 import { priceService } from "./services/price";
@@ -104,7 +105,7 @@ function App() {
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
   const [chartAsset, setChartAsset] = useState<any | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'trend' | 'settings'>('assets');
+  const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'trend' | 'performance' | 'settings'>('assets');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
   const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
@@ -1244,6 +1245,16 @@ function App() {
         )
       }
 
+      {/* Performance Tab */}
+      {activeTab === 'performance' && assets && (
+        <PerformanceView
+          assets={assets}
+          exchangeRate={exchangeRate}
+          language={language}
+          hideValues={hideValues}
+        />
+      )}
+
       {/* Modal */}
       <AddAssetModal
         isOpen={isModalOpen}
@@ -1281,6 +1292,10 @@ function App() {
         <div className={`tab-item ${activeTab === 'trend' ? 'active' : ''}`} onClick={() => setActiveTab('trend')}>
           <TrendingUp size={24} />
           <span>{t('trend')}</span>
+        </div>
+        <div className={`tab-item ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')}>
+          <BarChart2 size={24} />
+          <span>{t('performance')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
           <GanttChartSquare size={24} />

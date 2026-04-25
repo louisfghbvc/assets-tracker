@@ -20,7 +20,11 @@ vi.mock('./services/sync', () => ({
     syncService: { upload: vi.fn(), download: vi.fn() },
 }));
 vi.mock('./services/price', () => ({
-    priceService: { fetchPrices: vi.fn().mockResolvedValue([]), fetchExchangeRate: vi.fn().mockResolvedValue(32.5) },
+    priceService: {
+        fetchPrices: vi.fn().mockResolvedValue([]),
+        fetchExchangeRate: vi.fn().mockResolvedValue(32.5),
+        fetchBenchmarkPrice: vi.fn().mockResolvedValue(null),
+    },
 }));
 
 describe('App', () => {
@@ -105,7 +109,7 @@ describe('App', () => {
 
         const dateSpan = document.querySelector('.record-purchase-date');
         expect(dateSpan).not.toBeNull();
-        expect(dateSpan?.textContent).toContain(new Date(ts).toLocaleString());
+        expect(dateSpan?.textContent).toContain(new Date(ts).toLocaleDateString());
     });
 
     it('should render — in record-purchase-date span when purchaseDate is absent', () => {
@@ -144,5 +148,20 @@ describe('App', () => {
 
         // Check for stats content
         expect(screen.getByText('資產配置圖表')).toBeInTheDocument();
+    });
+
+    it('should render PerformanceView when performance tab is clicked', () => {
+        localStorage.setItem('google_access_token', 'fake-token');
+        const mockAssets = [
+            { id: 1, symbol: 'AAPL', name: 'Apple', market: 'US', quantity: 10, currentPrice: 150, cost: 140, type: 'stock', source: 'manual', purchaseDate: Date.now() - 400 * 86400000 }
+        ];
+        vi.mocked(useLiveQuery).mockReturnValue(mockAssets);
+        render(<App />);
+
+        const perfTab = screen.getByText('績效');
+        fireEvent.click(perfTab);
+
+        // Assert a string unique to PerformanceView (not the tab label)
+        expect(screen.getByText('績效總覽')).toBeInTheDocument();
     });
 });
