@@ -668,9 +668,9 @@ function App() {
           {totalRealizedGainTWD !== null && (
             <div className="balance-stat" style={{ marginTop: '4px' }}>
               <span className={`stat-value ${totalRealizedGainTWD >= 0 ? 'positive' : 'negative'}`} style={{ fontSize: '0.85em' }}>
-                已實現 {totalRealizedGainTWD >= 0 ? '+' : ''}{displayValue(totalRealizedGainTWD, '$')} TWD
+                {t('realized')} {totalRealizedGainTWD >= 0 ? '+' : ''}{displayValue(totalRealizedGainTWD, '$')} TWD
               </span>
-              <span className="stat-label" style={{ fontSize: '0.75em' }}>已賣出</span>
+              <span className="stat-label" style={{ fontSize: '0.75em' }}>{t('soldLabel')}</span>
             </div>
           )}
         </div>
@@ -848,9 +848,9 @@ function App() {
                                     setSellingAsset(item);
                                     setIsSellModalOpen(true);
                                   }}
-                                  title="賣出此持倉"
+                                  title={t('sellPosition')}
                                 >
-                                  賣
+                                  {t('sellBtn')}
                                 </button>
                                 <button
                                   className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
@@ -884,16 +884,16 @@ function App() {
                           const symbolSells = sellRecords?.filter(r => r.symbol === asset.symbol) ?? [];
                           return (
                             <div className="sell-history-section">
-                              <p className="records-header">已賣出記錄</p>
+                              <p className="records-header">{t('sellHistory')}</p>
                               {symbolSells.length === 0 ? (
-                                <p className="sell-history-empty">尚無賣出記錄</p>
+                                <p className="sell-history-empty">{t('noSellHistory')}</p>
                               ) : (
                                 symbolSells.sort((a, b) => b.sellDate - a.sellDate).map(sr => (
                                   <div key={sr.id ?? sr.recordId} className="sell-history-item">
                                     <span className="sell-history-date">{new Date(sr.sellDate).toLocaleDateString()}</span>
-                                    <span className="sell-history-detail">賣出 {sr.soldQuantity} 股 @ ${sr.sellPrice}</span>
+                                    <span className="sell-history-detail">{t('soldAction')} {sr.soldQuantity} {t('shares')} @ ${sr.sellPrice}</span>
                                     <span className={`sell-history-gain ${sr.realizedGain >= 0 ? 'positive' : 'negative'}`}>
-                                      → 已實現 {sr.realizedGain >= 0 ? '+' : ''}{(sr.realizedGainTWD ?? sr.realizedGain).toLocaleString(undefined, { maximumFractionDigits: 0 })} {sr.market === 'TW' ? 'TWD' : 'TWD≈'}
+                                      → {t('realized')} {sr.realizedGain >= 0 ? '+' : ''}{(sr.realizedGainTWD ?? sr.realizedGain).toLocaleString(undefined, { maximumFractionDigits: 0 })} {sr.market === 'TW' ? 'TWD' : 'TWD≈'}
                                     </span>
                                   </div>
                                 ))
@@ -919,7 +919,7 @@ function App() {
                 if (closedSymbols.length === 0) return null;
                 return (
                   <div className="closed-positions-section">
-                    <p className="section-sub-header">已平倉</p>
+                    <p className="section-sub-header">{t('closedPositions')}</p>
                     {closedSymbols.map(sym => {
                       const records = (sellRecords ?? []).filter(r => r.symbol === sym).sort((a, b) => b.sellDate - a.sellDate);
                       const firstName = records[0]?.name ?? sym;
@@ -929,7 +929,7 @@ function App() {
                           <div className="asset-summary">
                             <div className="asset-info">
                               <p className="asset-name">{firstName}</p>
-                              <p className="asset-symbol">{sym} · 已完全賣出</p>
+                              <p className="asset-symbol">{sym} · {t('fullySold')}</p>
                             </div>
                             <ChevronRight size={20} className={`expand-chevron ${closedExpanded ? 'rotated' : ''}`} />
                           </div>
@@ -939,9 +939,9 @@ function App() {
                                 {records.map(sr => (
                                   <div key={sr.id ?? sr.recordId} className="sell-history-item">
                                     <span className="sell-history-date">{new Date(sr.sellDate).toLocaleDateString()}</span>
-                                    <span className="sell-history-detail">賣出 {sr.soldQuantity} 股 @ ${sr.sellPrice}</span>
+                                    <span className="sell-history-detail">{t('soldAction')} {sr.soldQuantity} {t('shares')} @ ${sr.sellPrice}</span>
                                     <span className={`sell-history-gain ${sr.realizedGain >= 0 ? 'positive' : 'negative'}`}>
-                                      → 已實現 {sr.realizedGain >= 0 ? '+' : ''}{(sr.realizedGainTWD ?? sr.realizedGain).toLocaleString(undefined, { maximumFractionDigits: 0 })} TWD
+                                      → {t('realized')} {sr.realizedGain >= 0 ? '+' : ''}{(sr.realizedGainTWD ?? sr.realizedGain).toLocaleString(undefined, { maximumFractionDigits: 0 })} TWD
                                     </span>
                                   </div>
                                 ))}
@@ -1251,7 +1251,8 @@ function App() {
         onClose={() => { setIsSellModalOpen(false); setSellingAsset(null); }}
         asset={sellingAsset}
         currentExchangeRate={exchangeRate}
-        onSold={() => setSyncStatus('賣出成功！')}
+        onSold={() => setSyncStatus(t('sellSuccess'))}
+        language={language}
       />
 
       {/* Tab Bar (for Mobile) */}

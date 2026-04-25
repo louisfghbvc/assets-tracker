@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { type Asset } from '../db/database';
 import { sellAsset, ValidationError } from '../services/portfolio';
+import { translations, Language } from '../translations';
 
 interface SellAssetModalProps {
     isOpen: boolean;
@@ -9,6 +10,7 @@ interface SellAssetModalProps {
     asset: Asset | null;
     currentExchangeRate: number;
     onSold?: () => void;
+    language: Language;
 }
 
 const SellAssetModal: React.FC<SellAssetModalProps> = ({
@@ -17,7 +19,10 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
     asset,
     currentExchangeRate,
     onSold,
+    language,
 }) => {
+    const t = (key: keyof typeof translations.en) =>
+        translations[language][key] || translations.en[key] || key;
     const [soldQuantity, setSoldQuantity] = useState('');
     const [sellPrice, setSellPrice] = useState('');
     const [sellDateStr, setSellDateStr] = useState('');
@@ -61,10 +66,10 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
         const price = parseFloat(sellPrice);
         const feesNum = fees ? parseFloat(fees) : undefined;
 
-        if (isNaN(qty) || qty <= 0) { setError('請輸入有效數量'); return; }
-        if (qty > asset.quantity) { setError('數量超過持倉'); return; }
-        if (isNaN(price) || price <= 0) { setError('請輸入有效賣出價格'); return; }
-        if (feesNum !== undefined && isNaN(feesNum)) { setError('請輸入有效手續費'); return; }
+        if (isNaN(qty) || qty <= 0) { setError(t('invalidQtyError')); return; }
+        if (qty > asset.quantity) { setError(t('exceedsHoldingsError')); return; }
+        if (isNaN(price) || price <= 0) { setError(t('invalidSellPriceError')); return; }
+        if (feesNum !== undefined && isNaN(feesNum)) { setError(t('invalidFeesError')); return; }
 
         const sellDate = sellDateStr ? new Date(sellDateStr).getTime() : Date.now();
 
@@ -84,7 +89,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
             if (e instanceof ValidationError) {
                 setError(e.message);
             } else {
-                setError('賣出失敗，請重試');
+                setError(t('sellFailedError'));
             }
             setIsSubmitting(false);
         }
@@ -94,18 +99,18 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>賣出 {asset.symbol}</h2>
+                    <h2>{t('soldAction')} {asset.symbol}</h2>
                     <button className="modal-close-btn" onClick={onClose}><X size={20} /></button>
                 </div>
 
                 <div className="modal-body">
                     <div className="form-group">
-                        <label>持倉數量</label>
+                        <label>{t('heldQuantity')}</label>
                         <div className="readonly-value">{asset.quantity}</div>
                     </div>
 
                     <div className="form-group">
-                        <label>賣出數量 *</label>
+                        <label>{t('sellQuantity')} *</label>
                         <input
                             type="number"
                             min="0"
@@ -113,26 +118,26 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                             step="any"
                             value={soldQuantity}
                             onChange={e => { setSoldQuantity(e.target.value); setError(null); }}
-                            placeholder={`最多 ${asset.quantity}`}
+                            placeholder={`Max ${asset.quantity}`}
                             className="modal-input"
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>賣出價格 (每股) *</label>
+                        <label>{t('sellPriceLabel')} *</label>
                         <input
                             type="number"
                             min="0"
                             step="any"
                             value={sellPrice}
                             onChange={e => { setSellPrice(e.target.value); setError(null); }}
-                            placeholder="每單位價格"
+                            placeholder={t('pricePerUnit')}
                             className="modal-input"
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>賣出日期 *</label>
+                        <label>{t('sellDateLabel')} *</label>
                         <input
                             type="date"
                             value={sellDateStr}
@@ -142,7 +147,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                     </div>
 
                     <div className="form-group">
-                        <label>手續費 (選填)</label>
+                        <label>{t('feesLabel')}</label>
                         <input
                             type="number"
                             min="0"
@@ -156,7 +161,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
 
                     {preview !== null && (
                         <div className={`sell-preview ${preview.gain >= 0 ? 'gain' : 'loss'}`}>
-                            <span className="preview-label">已實現損益預覽：</span>
+                            <span className="preview-label">{t('realizedPreview')}</span>
                             <span className="preview-value">
                                 {preview.gain >= 0 ? '+' : ''}
                                 {preview.gain.toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -166,7 +171,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                                 <span className="preview-twd">
                                     {' '}≈ {preview.gainTWD >= 0 ? '+' : ''}
                                     {preview.gainTWD.toLocaleString(undefined, { maximumFractionDigits: 0 })} TWD
-                                    {isBackdated && <span className="approx-label"> (近似值)</span>}
+                                    {isBackdated && <span className="approx-label"> ({t('approx')})</span>}
                                 </span>
                             )}
                         </div>
@@ -176,13 +181,13 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                 </div>
 
                 <div className="modal-footer">
-                    <button className="modal-cancel-btn" onClick={onClose} disabled={isSubmitting}>取消</button>
+                    <button className="modal-cancel-btn" onClick={onClose} disabled={isSubmitting}>{t('cancel')}</button>
                     <button
                         className="modal-sell-btn"
                         onClick={handleSubmit}
                         disabled={isSubmitting || !soldQuantity || !sellPrice}
                     >
-                        {isSubmitting ? '處理中...' : '確認賣出'}
+                        {isSubmitting ? t('processing') : t('confirmSell')}
                     </button>
                 </div>
             </div>
