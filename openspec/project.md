@@ -26,7 +26,9 @@ AssetTracker is a personalized cross-platform asset tracking system designed to 
 - **Service Layer**: Business logic (e.g., search, price fetching, sync) is encapsulated in the `src/services/` directory.
 
 ### Testing Strategy
-- Currently focusing on manual verification and build checks. Automated tests to be implemented.
+- Vitest + React Testing Library for unit and component tests. 118+ tests covering services, components, and DB layer.
+- Tests live in `src/**/__tests__/`. Run with `npm run test:run`.
+- 5 pre-existing failures in `price.test.ts` (network fetch mocking gap, not blocking).
 
 ### Git Workflow
 - Feature-based development.

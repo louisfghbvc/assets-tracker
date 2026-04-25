@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-04-25
+
+### Added
+- **Holding days display**: Each asset card now shows how long you've held the position (e.g., "持有天數: 831 天") when a purchase date is set. No purchase date? The field is hidden entirely rather than showing zero.
+- **Date-only purchase date input**: Add, Edit, and Sell modals now use a proper date picker (`type="date"`) instead of a combined date-time input. You pick the date; the app handles midnight-in-your-timezone so there's no off-by-one when you're outside UTC.
+- **Human-readable Sheets columns**: Google Sheets backup now includes `DateReadable` (YYYY-MM-DD) alongside the raw `PurchaseDate` timestamp, `SellDateReadable`, and `PurchaseDateSnapshotReadable` in the sell records sheet. The spreadsheet is now readable without a timestamp converter.
+- **Traditional Chinese user guide**: `docs/user-guide.md` — full walkthrough in 繁體中文 covering install, adding your first asset, Google Sheets sync, and recording a sell with P&L.
+- **Screenshot automation**: `scripts/take-screenshots.mjs` — Playwright script to regenerate the 10 guide screenshots when the UI changes.
+
+### Fixed
+- Sell modal success toast now auto-dismisses correctly when a synthetic (empty-picture) user profile is active — fixed a React prop warning caused by `<img src="">` on empty avatar URLs.
+- `AddAssetModal` now initializes `purchaseDate` to local midnight (not `Date.now()`) so the stored timestamp doesn't include time-of-day when the user never touches the date field.
+
+### For contributors
+- `type="date"` replaces `type="datetime-local"` in all three modals. Parse new dates with `new Date(y, m-1, d).getTime()` (local midnight) not `new Date(dateString).getTime()` (UTC midnight).
+- Sheets column naming: new readable columns must NOT contain `'purchase'`, `'updated'`, or `'source'` as a substring — the sync parser uses `includes()` matching. See TODOS.md for the principled fix.
+
 ## [0.3.0] - 2026-04-25
 
 ### Added
