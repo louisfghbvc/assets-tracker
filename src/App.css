@@ -2487,3 +2487,188 @@ input:focus {
     font-size: 0.75rem;
   }
 }
+
+/* ── Sell button (amber) on individual lot rows ── */
+.sell-item-btn {
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.4);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fb923c;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+  pointer-events: auto !important;
+  z-index: 100 !important;
+  position: relative;
+}
+.sell-item-btn:hover {
+  background: rgba(251, 146, 60, 0.25);
+  border-color: #fb923c;
+  transform: scale(1.05);
+}
+
+/* ── Sell history in expanded card ── */
+.sell-history-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sell-history-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+.sell-history-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.sell-history-date { color: var(--text-muted); min-width: 80px; }
+.sell-history-detail { flex: 1; }
+.sell-history-gain.positive { color: #34d399; }
+.sell-history-gain.negative { color: #f87171; }
+
+/* ── Closed Positions section ── */
+.closed-positions-section {
+  margin-top: 16px;
+}
+.section-sub-header {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 0 4px 8px;
+}
+.closed-position {
+  opacity: 0.75;
+}
+.closed-position:hover {
+  opacity: 1;
+}
+
+/* ── SellAssetModal specific ── */
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+.modal-cancel-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 14px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.modal-cancel-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.modal-sell-btn {
+  flex: 2;
+  background: #fb923c;
+  border: none;
+  color: #fff;
+  padding: 14px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.modal-sell-btn:hover:not(:disabled) { background: #f97316; transform: translateY(-1px); }
+.modal-sell-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.modal-error {
+  color: #f87171;
+  font-size: 0.88rem;
+  padding: 10px 14px;
+  background: rgba(248, 113, 113, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+.readonly-value {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+}
+.sell-preview {
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.sell-preview.gain {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #34d399;
+}
+.sell-preview.loss {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #f87171;
+}
+.preview-label { color: rgba(255, 255, 255, 0.7); margin-right: 4px; }
+.preview-twd { color: rgba(255, 255, 255, 0.6); font-size: 0.82rem; }
+.approx-label { font-style: italic; opacity: 0.7; }
+.modal-close-btn {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+.modal-close-btn:hover { background: rgba(255, 255, 255, 0.15) !important; }
+.modal-input {
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 14px 16px;
+  border-radius: 14px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+.modal-input:focus {
+  outline: none;
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.15);
+}
