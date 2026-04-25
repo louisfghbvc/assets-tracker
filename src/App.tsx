@@ -1261,7 +1261,7 @@ function App() {
         onClose={() => { setIsSellModalOpen(false); setSellingAsset(null); }}
         asset={sellingAsset}
         currentExchangeRate={exchangeRate}
-        onSold={() => setSyncStatus(t('sellSuccess'))}
+        onSold={() => { setSyncStatus(t('sellSuccess')); setTimeout(() => setSyncStatus(""), 3000); }}
         language={language}
       />
 
