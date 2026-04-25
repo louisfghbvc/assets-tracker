@@ -634,7 +634,7 @@ function App() {
                 }}
                 data-hint={isLoggingOut ? t('confirmLogout') : t('logoutAccount')}
               >
-                <img src={userProfile.picture} alt={userProfile.name} className="user-avatar" referrerPolicy="no-referrer" />
+                <img src={userProfile.picture || undefined} alt={userProfile.name} className="user-avatar" referrerPolicy="no-referrer" />
                 <span className="user-name-text">{isLoggingOut ? t('confirm') : userProfile.name}</span>
               </div>
             ) : (
