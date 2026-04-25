@@ -158,6 +158,10 @@ describe('benchmarkAnnualizedReturn', () => {
         expect(result).not.toBeNull();
         expect(result!).toBeCloseTo(1.0, 4);
     });
+
+    it('returns null when currentPrice is 0', () => {
+        expect(benchmarkAnnualizedReturn(100, 0, 365)).toBeNull();
+    });
 });
 
 // ──────────────────────────────────────────────

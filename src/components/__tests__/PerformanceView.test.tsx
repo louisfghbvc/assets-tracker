@@ -71,6 +71,26 @@ describe('PerformanceView', () => {
             const btn = screen.getByText('Save All');
             expect(btn).toBeDisabled();
         });
+
+        it('handleSaveDates calls db.assets.update when date entered and save clicked', async () => {
+            const { db } = await import('../../db/database');
+            const assets = [makeAsset({ id: 1, purchaseDate: undefined })];
+            render(<PerformanceView {...defaultProps} assets={assets} />);
+
+            const input = document.querySelector('input[type="date"]') as HTMLInputElement;
+            expect(input).not.toBeNull();
+            fireEvent.change(input, { target: { value: '2023-01-15' } });
+
+            const saveBtn = screen.getByText('Save All');
+            expect(saveBtn).not.toBeDisabled();
+            fireEvent.click(saveBtn);
+
+            await waitFor(() => {
+                expect(db.assets.update).toHaveBeenCalledWith(1, {
+                    purchaseDate: new Date('2023-01-15').getTime(),
+                });
+            }, { timeout: 2000 });
+        });
     });
 
     describe('all assets have purchaseDate — full analytics', () => {
