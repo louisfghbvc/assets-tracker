@@ -6,7 +6,7 @@ The app uses Dexie.js (IndexedDB) for local storage. Assets are a flat table —
 
 **Goals:**
 - Add `purchaseDate` (Unix ms timestamp, optional) to the `Asset` schema
-- Migrate existing rows: default `purchaseDate` to `lastUpdated`
+- No migration default: leave `purchaseDate` as `undefined` for existing assets (they show "—" until manually set)
 - Expose a `<input type="datetime-local">` in EditAssetModal
 - Display formatted purchase date in the expanded asset card
 
