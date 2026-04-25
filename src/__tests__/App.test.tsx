@@ -83,6 +83,42 @@ describe('App', () => {
         expect(screen.getByText('EN')).toBeInTheDocument();
     });
 
+    it('should render purchaseDate as formatted text in record-purchase-date span', () => {
+        localStorage.setItem('google_access_token', 'fake-token');
+        const ts = 1700000000000;
+        const mockAssets = [
+            { id: 1, symbol: 'AAPL', name: 'Apple', market: 'US', quantity: 10, currentPrice: 150, cost: 140, type: 'stock', source: 'manual', purchaseDate: ts }
+        ];
+        vi.mocked(useLiveQuery).mockReturnValue(mockAssets);
+        render(<App />);
+
+        // Expand the asset row to reveal individual records
+        const assetItem = document.querySelector('.asset-item');
+        expect(assetItem).not.toBeNull();
+        fireEvent.click(assetItem!);
+
+        const dateSpan = document.querySelector('.record-purchase-date');
+        expect(dateSpan).not.toBeNull();
+        expect(dateSpan?.textContent).toContain(new Date(ts).toLocaleString());
+    });
+
+    it('should render — in record-purchase-date span when purchaseDate is absent', () => {
+        localStorage.setItem('google_access_token', 'fake-token');
+        const mockAssets = [
+            { id: 1, symbol: 'AAPL', name: 'Apple', market: 'US', quantity: 10, currentPrice: 150, cost: 140, type: 'stock', source: 'manual' }
+        ];
+        vi.mocked(useLiveQuery).mockReturnValue(mockAssets);
+        render(<App />);
+
+        const assetItem = document.querySelector('.asset-item');
+        expect(assetItem).not.toBeNull();
+        fireEvent.click(assetItem!);
+
+        const dateSpan = document.querySelector('.record-purchase-date');
+        expect(dateSpan).not.toBeNull();
+        expect(dateSpan?.textContent).toContain('—');
+    });
+
     it('should switch between tabs', () => {
         localStorage.setItem('google_access_token', 'fake-token');
         vi.mocked(useLiveQuery).mockReturnValue([]);

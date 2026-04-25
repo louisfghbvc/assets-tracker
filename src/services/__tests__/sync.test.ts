@@ -1,6 +1,70 @@
 import { describe, it, expect } from 'vitest';
 import { syncService } from '../sync';
 
+describe('syncService parsePortfolioRows — purchaseDate', () => {
+    it('detects purchaseDate column by "purchase" in header', () => {
+        const rows = [
+            ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate'],
+            ['r1', 'AAPL', 'Apple', 'stock', 'US', '10', '150', '1700000000000', 'manual', '1700000000000'],
+        ];
+        // @ts-ignore
+        const parsed = syncService.parsePortfolioRows(rows);
+        expect(parsed).toHaveLength(1);
+        expect(parsed[0].purchaseDate).toBe(1700000000000);
+    });
+
+    it('uses column 9 for purchaseDate in fallback colMap when no header row', () => {
+        // No row matching 'symbol'/'ticker'/'代碼', so headerIndex stays -1 and fallback colMap is used
+        const rows = [
+            ['r1', 'AAPL', 'Apple', 'stock', 'US', '10', '150', '1700000000000', 'manual', '1700000000000'],
+        ];
+        // @ts-ignore
+        const parsed = syncService.parsePortfolioRows(rows);
+        expect(parsed).toHaveLength(1);
+        expect(parsed[0].purchaseDate).toBe(1700000000000);
+    });
+
+    it('returns undefined for purchaseDate when column value is empty string', () => {
+        const rows = [
+            ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate'],
+            ['r1', 'AAPL', 'Apple', 'stock', 'US', '10', '150', '1700000000000', 'manual', ''],
+        ];
+        // @ts-ignore
+        const parsed = syncService.parsePortfolioRows(rows);
+        expect(parsed[0].purchaseDate).toBeUndefined();
+    });
+
+    it('returns undefined for purchaseDate when value is not a number', () => {
+        const rows = [
+            ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate'],
+            ['r1', 'AAPL', 'Apple', 'stock', 'US', '10', '150', '1700000000000', 'manual', 'not-a-number'],
+        ];
+        // @ts-ignore
+        const parsed = syncService.parsePortfolioRows(rows);
+        expect(parsed[0].purchaseDate).toBeUndefined();
+    });
+
+    it('preserves epoch-0 purchaseDate instead of converting to undefined', () => {
+        const rows = [
+            ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate'],
+            ['r1', 'AAPL', 'Apple', 'stock', 'US', '10', '150', '1700000000000', 'manual', '0'],
+        ];
+        // @ts-ignore
+        const parsed = syncService.parsePortfolioRows(rows);
+        expect(parsed[0].purchaseDate).toBe(0);
+    });
+
+    it('returns undefined when purchaseDate column is absent from header', () => {
+        const rows = [
+            ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source'],
+            ['r1', 'AAPL', 'Apple', 'stock', 'US', '10', '150', '1700000000000', 'manual'],
+        ];
+        // @ts-ignore
+        const parsed = syncService.parsePortfolioRows(rows);
+        expect(parsed[0].purchaseDate).toBeUndefined();
+    });
+});
+
 describe('syncService history parsing', () => {
     it('should parse history rows with notes correctly', () => {
         const rows = [
