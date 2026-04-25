@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-04-25
+
+### Added
+- **Sell assets**: You can now record a sell for any asset — enter quantity, sell price, date, and optional fees. The position is reduced (or closed) atomically.
+- **Realized P&L**: Each sell shows your gain/loss at the moment of the sale, with a live preview before you confirm. Gain is shown in both asset currency and TWD.
+- **Closed positions tab**: Assets you've fully sold move to a "Closed Positions" view so your active portfolio stays clean.
+- **Sell history**: Every sell is stored as a `SellRecord` in the local database (Dexie v7 schema) with date, price, quantity, and fees.
+- **Cloud sync for sell records**: Sell history syncs to Google Sheets (a dedicated `SellRecords` sheet) on backup/restore alongside your portfolio.
+- **Backdate support**: Sell date defaults to today but can be set to any past date. A visual flag appears when you enter a backdated sell.
+
+### Fixed
+- Sell modal error message now clears immediately when you change any input field (previously it lingered after correcting).
+- Sell success toast now auto-dismisses after 3 seconds.
+
+### For contributors
+- `SellRecord` schema added to `src/db/database.ts`; `sellAsset()` in `src/services/portfolio.ts` handles the atomic deduct-and-record transaction.
+- 12 new tests for `sellAsset()` covering all validation branches and edge cases.
+
 ## [0.2.0] - 2026-04-25
 
 ### Added
