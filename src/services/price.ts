@@ -412,5 +412,82 @@ export const priceService = {
         }
 
         throw new Error(`Unable to fetch chart data for ${symbol}. All proxies failed.`);
+    },
+
+    // Module-level cache for benchmark prices (clears on page reload)
+    _benchmarkCache: null as { data: Record<string, { startPrice: number; currentPrice: number }>; fetchedAt: number } | null,
+
+    async fetchBenchmarkPrice(symbol: string, startDateMs: number): Promise<{ startPrice: number; currentPrice: number } | null> {
+        const cacheKey = `${symbol}:${Math.floor(startDateMs / 3600000)}`; // key by hour bucket
+        const now = Date.now();
+
+        if (this._benchmarkCache && now - this._benchmarkCache.fetchedAt < 3600000) {
+            const cached = this._benchmarkCache.data[cacheKey];
+            if (cached) return cached;
+        }
+
+        const workerProxyUrl = import.meta.env.VITE_CORS_PROXY_URL;
+        const fallbackProxies = [
+            "https://api.codetabs.com/v1/proxy?quest=",
+            "https://api.allorigins.win/raw?url=",
+            "https://corsproxy.io/?"
+        ];
+
+        // Narrow 7-day window around startDate to get the opening price
+        const period1 = Math.floor(startDateMs / 1000);
+        const period2 = Math.floor(startDateMs / 1000) + 7 * 86400;
+        const startUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&period1=${period1}&period2=${period2}`;
+        const currentUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`;
+
+        const fetchJson = async (url: string): Promise<any> => {
+            if (workerProxyUrl) {
+                try {
+                    const res = await fetch(workerProxyUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url }),
+                    });
+                    if (res.ok) {
+                        const text = await res.text();
+                        try { return JSON.parse(text); } catch { /* fall through */ }
+                    }
+                } catch { /* fall through */ }
+            }
+            for (const proxy of fallbackProxies) {
+                try {
+                    const res = await fetch(proxy + encodeURIComponent(url));
+                    if (!res.ok) continue;
+                    const text = await res.text();
+                    try {
+                        const parsed = JSON.parse(text);
+                        return parsed.contents ? JSON.parse(parsed.contents) : parsed;
+                    } catch { continue; }
+                } catch { continue; }
+            }
+            return null;
+        };
+
+        try {
+            const [startJson, currentJson] = await Promise.all([fetchJson(startUrl), fetchJson(currentUrl)]);
+
+            const startCloses = startJson?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+            const startPrice = startCloses?.find((v: number | null) => v != null && v > 0) ?? null;
+
+            const currentPrice = currentJson?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null;
+
+            if (startPrice == null || currentPrice == null) return null;
+
+            const result = { startPrice, currentPrice };
+
+            if (!this._benchmarkCache || now - this._benchmarkCache.fetchedAt >= 3600000) {
+                this._benchmarkCache = { data: {}, fetchedAt: now };
+            }
+            this._benchmarkCache.data[cacheKey] = result;
+
+            return result;
+        } catch (e) {
+            console.error('Benchmark fetch failed:', e);
+            return null;
+        }
     }
 };
