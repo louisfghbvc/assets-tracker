@@ -112,7 +112,11 @@ describe('priceService', () => {
                         timestamp: [1609459200, 1609545600],
                         indicators: {
                             quote: [{
-                                close: [150.0, 152.0]
+                                open: [148.0, 150.0],
+                                high: [151.0, 153.0],
+                                low: [147.0, 149.0],
+                                close: [150.0, 152.0],
+                                volume: [1000000, 1200000],
                             }]
                         }
                     }]
@@ -121,7 +125,7 @@ describe('priceService', () => {
 
             (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
-                text: async () => JSON.stringify(mockHistoryResp),
+                json: async () => mockHistoryResp,
             });
 
             const results = await priceService.fetchHistoryWeb('AAPL', '1d', '1d');
@@ -138,7 +142,7 @@ describe('priceService', () => {
         it('should handle missing chart data gracefully', async () => {
             (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
-                text: async () => JSON.stringify({ chart: { result: null } }),
+                json: async () => ({ chart: { result: null } }),
             });
 
             const results = await priceService.fetchHistoryWeb('INVALID', '1d', '1d');
@@ -204,7 +208,11 @@ describe('priceService', () => {
                         timestamp: [1609459200],
                         indicators: {
                             quote: [{
-                                close: [150.0]
+                                open: [148.0],
+                                high: [151.0],
+                                low: [147.0],
+                                close: [150.0],
+                                volume: [1000000],
                             }]
                         }
                     }]
@@ -213,7 +221,7 @@ describe('priceService', () => {
 
             (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
-                text: async () => JSON.stringify(mockHistoryResp),
+                json: async () => mockHistoryResp,
             });
 
             const results = await priceService.fetchHistory('AAPL', '1d');

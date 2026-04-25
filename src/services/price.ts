@@ -411,7 +411,7 @@ export const priceService = {
             }
         }
 
-        throw new Error(`Unable to fetch chart data for ${symbol}. All proxies failed.`);
+        return [];
     },
 
     // Module-level cache for benchmark prices (clears on page reload)

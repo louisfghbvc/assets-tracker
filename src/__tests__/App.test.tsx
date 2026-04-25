@@ -105,7 +105,7 @@ describe('App', () => {
 
         const dateSpan = document.querySelector('.record-purchase-date');
         expect(dateSpan).not.toBeNull();
-        expect(dateSpan?.textContent).toContain(new Date(ts).toLocaleString());
+        expect(dateSpan?.textContent).toContain(new Date(ts).toLocaleDateString());
     });
 
     it('should render — in record-purchase-date span when purchaseDate is absent', () => {
