@@ -112,7 +112,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                             max={asset.quantity}
                             step="any"
                             value={soldQuantity}
-                            onChange={e => setSoldQuantity(e.target.value)}
+                            onChange={e => { setSoldQuantity(e.target.value); setError(null); }}
                             placeholder={`最多 ${asset.quantity}`}
                             className="modal-input"
                         />
@@ -125,7 +125,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                             min="0"
                             step="any"
                             value={sellPrice}
-                            onChange={e => setSellPrice(e.target.value)}
+                            onChange={e => { setSellPrice(e.target.value); setError(null); }}
                             placeholder="每單位價格"
                             className="modal-input"
                         />
@@ -136,7 +136,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                         <input
                             type="date"
                             value={sellDateStr}
-                            onChange={e => setSellDateStr(e.target.value)}
+                            onChange={e => { setSellDateStr(e.target.value); setError(null); }}
                             className="modal-input"
                         />
                     </div>
@@ -148,7 +148,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
                             min="0"
                             step="any"
                             value={fees}
-                            onChange={e => setFees(e.target.value)}
+                            onChange={e => { setFees(e.target.value); setError(null); }}
                             placeholder="0"
                             className="modal-input"
                         />
