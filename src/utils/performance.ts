@@ -55,12 +55,12 @@ export function benchmarkAnnualizedReturn(
 export function portfolioHoldingDays(assets: Asset[]): number {
     const datedAssets = assets.filter(a => a.purchaseDate && a.purchaseDate > 0);
     if (datedAssets.length === 0) return 0;
-    const earliest = Math.min(...datedAssets.map(a => a.purchaseDate!));
+    const earliest = datedAssets.reduce((min, a) => Math.min(min, a.purchaseDate!), Infinity);
     return Math.floor((Date.now() - earliest) / 86400000);
 }
 
 export function portfolioStartDate(assets: Asset[]): number | null {
     const datedAssets = assets.filter(a => a.purchaseDate && a.purchaseDate > 0);
     if (datedAssets.length === 0) return null;
-    return Math.min(...datedAssets.map(a => a.purchaseDate!));
+    return datedAssets.reduce((min, a) => Math.min(min, a.purchaseDate!), Infinity);
 }

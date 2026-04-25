@@ -87,7 +87,7 @@ describe('PerformanceView', () => {
 
             await waitFor(() => {
                 expect(db.assets.update).toHaveBeenCalledWith(1, {
-                    purchaseDate: new Date('2023-01-15').getTime(),
+                    purchaseDate: new Date('2023-01-15T00:00:00').getTime(),
                 });
             }, { timeout: 2000 });
         });

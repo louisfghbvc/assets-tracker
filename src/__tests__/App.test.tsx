@@ -161,7 +161,7 @@ describe('App', () => {
         const perfTab = screen.getByText('績效');
         fireEvent.click(perfTab);
 
-        // Default language is ZH; assert PerformanceView rendered its title
-        expect(screen.getAllByText(/績效/).length).toBeGreaterThan(0);
+        // Assert a string unique to PerformanceView (not the tab label)
+        expect(screen.getByText('績效總覽')).toBeInTheDocument();
     });
 });

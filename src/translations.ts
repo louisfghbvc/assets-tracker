@@ -155,6 +155,10 @@ export const translations = {
         laggingIndex: "Lagging",
         unrealizedPnl: "Unrealized P&L",
         days: "days",
+        performanceSummary: "Portfolio Summary",
+        myPortfolio: "My Portfolio",
+        assetsMissingPurchaseDate: "assets missing purchase date",
+        benchmarkPeriod: "Period: {days} days",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -310,5 +314,9 @@ export const translations = {
         laggingIndex: "落後",
         unrealizedPnl: "未實現損益",
         days: "天",
+        performanceSummary: "績效總覽",
+        myPortfolio: "我的投資組合",
+        assetsMissingPurchaseDate: "項資產缺少購買日期",
+        benchmarkPeriod: "比較期間: {days} 天",
     }
 };

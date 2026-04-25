@@ -34,7 +34,64 @@ interface AssetReturn {
     shortHolding: boolean;
 }
 
-type TabType = 'setup' | 'analytics';
+interface SetupSectionProps {
+    undatedAssets: Asset[];
+    t: (key: keyof typeof translations.en) => string;
+    pendingDates: Record<number, string>;
+    setPendingDates: React.Dispatch<React.SetStateAction<Record<number, string>>>;
+    saving: boolean;
+    handleSaveDates: () => Promise<void>;
+}
+
+function SetupSection({ undatedAssets, t, pendingDates, setPendingDates, saving, handleSaveDates }: SetupSectionProps) {
+    return (
+        <div className="card" style={{ marginBottom: 16 }}>
+            <h3 style={{ marginBottom: 12, color: 'var(--text-secondary)' }}>
+                📅 {t('setupPurchaseDates')} ({undatedAssets.length} {t('assetsMissingPurchaseDate')})
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {undatedAssets.map(a => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ minWidth: 80, fontWeight: 600 }}>{a.symbol}</span>
+                        <input
+                            type="date"
+                            style={{
+                                flex: 1,
+                                background: 'var(--card-bg)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 8,
+                                padding: '6px 10px',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.9rem',
+                            }}
+                            value={pendingDates[a.id!] || ''}
+                            onChange={e =>
+                                setPendingDates(prev => ({ ...prev, [a.id!]: e.target.value }))
+                            }
+                        />
+                    </div>
+                ))}
+            </div>
+            <button
+                onClick={handleSaveDates}
+                disabled={saving || Object.keys(pendingDates).length === 0}
+                style={{
+                    marginTop: 16,
+                    padding: '8px 20px',
+                    background: 'var(--accent)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    opacity: saving || Object.keys(pendingDates).length === 0 ? 0.5 : 1,
+                }}
+            >
+                {saving ? '...' : t('saveAll')}
+            </button>
+        </div>
+    );
+}
 
 export function PerformanceView({ assets, exchangeRate, language, hideValues }: PerformanceViewProps) {
     const t = (key: keyof typeof translations.en) =>
@@ -89,6 +146,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
     useEffect(() => {
         if (!startDate || holdingDays < 1) return;
 
+        let cancelled = false;
         const benchmarkSymbols = ['^TWII', 'SPY'];
 
         setBenchmarks(prev => prev.map(b => ({ ...b, loading: true, error: false, annReturn: null })));
@@ -105,6 +163,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                 }
             })
         ).then(results => {
+            if (cancelled) return;
             setBenchmarks(prev =>
                 prev.map(b => {
                     const found = results.find(r => r.sym === b.symbol);
@@ -118,6 +177,8 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                 })
             );
         });
+
+        return () => { cancelled = true; };
     }, [startDate, holdingDays, benchmarkKey]);
 
     const handleSaveDates = async () => {
@@ -126,7 +187,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
             await Promise.all(
                 Object.entries(pendingDates).map(([idStr, dateStr]) => {
                     if (!dateStr) return Promise.resolve();
-                    const ms = new Date(dateStr).getTime();
+                    const ms = new Date(dateStr + 'T00:00:00').getTime();
                     if (!ms) return Promise.resolve();
                     return db.assets.update(parseInt(idStr), { purchaseDate: ms });
                 })
@@ -143,59 +204,18 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
     const fmtTWD = (v: number) =>
         (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' TWD';
 
-    const SetupSection = () => (
-        <div className="card" style={{ marginBottom: 16 }}>
-            <h3 style={{ marginBottom: 12, color: 'var(--text-secondary)' }}>
-                📅 {t('setupPurchaseDates')} ({undatedAssets.length} {language === 'zh' ? '項資產缺少購買日期' : 'assets missing purchase date'})
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {undatedAssets.map(a => (
-                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ minWidth: 80, fontWeight: 600 }}>{a.symbol}</span>
-                        <input
-                            type="date"
-                            style={{
-                                flex: 1,
-                                background: 'var(--card-bg)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
-                                padding: '6px 10px',
-                                color: 'var(--text-primary)',
-                                fontSize: '0.9rem',
-                            }}
-                            value={pendingDates[a.id!] || ''}
-                            onChange={e =>
-                                setPendingDates(prev => ({ ...prev, [a.id!]: e.target.value }))
-                            }
-                        />
-                    </div>
-                ))}
-            </div>
-            <button
-                onClick={handleSaveDates}
-                disabled={saving || Object.keys(pendingDates).length === 0}
-                style={{
-                    marginTop: 16,
-                    padding: '8px 20px',
-                    background: 'var(--accent)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    opacity: saving || Object.keys(pendingDates).length === 0 ? 0.5 : 1,
-                }}
-            >
-                {saving ? '...' : t('saveAll')}
-            </button>
-        </div>
-    );
-
     if (allUndated) {
         return (
             <section className="performance-view animate-fade-in" style={{ padding: '20px 16px' }}>
                 <h2 className="view-title" style={{ marginBottom: 16 }}>📊 {t('performance')}</h2>
-                <SetupSection />
+                <SetupSection
+                    undatedAssets={undatedAssets}
+                    t={t}
+                    pendingDates={pendingDates}
+                    setPendingDates={setPendingDates}
+                    saving={saving}
+                    handleSaveDates={handleSaveDates}
+                />
                 <div style={{ textAlign: 'center', padding: '40px 20px', opacity: 0.5 }}>
                     <p>{t('noDateForPerformance')}</p>
                 </div>
@@ -207,12 +227,21 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
         <section className="performance-view animate-fade-in" style={{ padding: '20px 16px' }}>
             <h2 className="view-title" style={{ marginBottom: 16 }}>📊 {t('performance')}</h2>
 
-            {hasUndated && <SetupSection />}
+            {hasUndated && (
+                <SetupSection
+                    undatedAssets={undatedAssets}
+                    t={t}
+                    pendingDates={pendingDates}
+                    setPendingDates={setPendingDates}
+                    saving={saving}
+                    handleSaveDates={handleSaveDates}
+                />
+            )}
 
             {/* Portfolio Summary Card */}
             {portfolioResult.value !== null && (
                 <div className="card" style={{ marginBottom: 16 }}>
-                    <h3 style={{ marginBottom: 12 }}>績效總覽</h3>
+                    <h3 style={{ marginBottom: 12 }}>{t('performanceSummary')}</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
@@ -261,7 +290,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                                     {language === 'zh' ? '資產' : 'Asset'}
                                 </th>
                                 <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    {language === 'zh' ? '持有天數' : 'Days'}
+                                    {t('holdingDays')}
                                 </th>
                                 <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                     {t('annualizedReturn')}
@@ -322,7 +351,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                     <h3 style={{ marginBottom: 12 }}>🏆 {t('benchmarkComparison')}</h3>
                     <div style={{ marginBottom: 12 }}>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
-                            {language === 'zh' ? '我的投資組合' : 'My Portfolio'}
+                            {t('myPortfolio')}
                         </div>
                         <div style={{
                             fontSize: '1.3rem', fontWeight: 700,
@@ -372,7 +401,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                         </div>
                     ))}
                     <div style={{ marginTop: 8, fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                        {language === 'zh' ? `比較期間: ${holdingDays} 天` : `Period: ${holdingDays} days`}
+                        {t('benchmarkPeriod').replace('{days}', String(holdingDays))}
                     </div>
                 </div>
             )}

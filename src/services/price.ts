@@ -12,6 +12,8 @@ export interface CandleData {
     volume: number;
 }
 
+const BENCHMARK_CACHE_TTL_MS = 60 * 60 * 1000;
+
 export const priceService = {
     async fetchExchangeRate(): Promise<number> {
         try {
@@ -418,10 +420,10 @@ export const priceService = {
     _benchmarkCache: null as { data: Record<string, { startPrice: number; currentPrice: number }>; fetchedAt: number } | null,
 
     async fetchBenchmarkPrice(symbol: string, startDateMs: number): Promise<{ startPrice: number; currentPrice: number } | null> {
-        const cacheKey = `${symbol}:${Math.floor(startDateMs / 3600000)}`; // key by hour bucket
+        const cacheKey = `${symbol}:${Math.floor(startDateMs / BENCHMARK_CACHE_TTL_MS)}`; // key by hour bucket
         const now = Date.now();
 
-        if (this._benchmarkCache && now - this._benchmarkCache.fetchedAt < 3600000) {
+        if (this._benchmarkCache && now - this._benchmarkCache.fetchedAt < BENCHMARK_CACHE_TTL_MS) {
             const cached = this._benchmarkCache.data[cacheKey];
             if (cached) return cached;
         }
@@ -479,7 +481,7 @@ export const priceService = {
 
             const result = { startPrice, currentPrice };
 
-            if (!this._benchmarkCache || now - this._benchmarkCache.fetchedAt >= 3600000) {
+            if (!this._benchmarkCache || now - this._benchmarkCache.fetchedAt >= BENCHMARK_CACHE_TTL_MS) {
                 this._benchmarkCache = { data: {}, fetchedAt: now };
             }
             this._benchmarkCache.data[cacheKey] = result;
