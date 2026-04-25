@@ -17,6 +17,11 @@ All notable changes to this project will be documented in this file.
 - Benchmark fetch effect now guards against stale results with a `cancelled` flag — navigating away before the fetch completes no longer overwrites the next view's state.
 - Timezone-safe purchase date parsing: dates are stored as local midnight (`T00:00:00`) so the displayed date matches what the user entered regardless of timezone.
 - `Math.min(...largeArray)` replaced with `.reduce()` in performance utils to prevent call stack overflow on large portfolios.
+- `annualizedReturn` now returns `null` instead of `Infinity` for extreme short-hold gains — `Math.pow` result is guarded with `isFinite()`.
+- Unrealized P&L column now correctly skips assets with `cost=0` (previously showed as 100% gain with no baseline).
+- `handleSaveDates` guards against `NaN` asset IDs before calling `db.assets.update` — avoids a silent no-op when `asset.id` is undefined.
+- Benchmark CORS-proxy allowlist narrowed from `['^TWII', '^GSPC', 'SPY']` to `['^TWII', 'SPY']` — `^GSPC` was dead code (the component only requests SPY).
+- Portfolio annualized return label gets a ⓘ tooltip clarifying it is a weighted average of per-asset CAGRs (each using its own holding period), not a single-period total return.
 
 ### For contributors
 - `SetupSection` is a module-level named component (not defined inside `PerformanceView`'s render) — this is required so React doesn't unmount it on every parent render, which caused focus loss on date inputs.
