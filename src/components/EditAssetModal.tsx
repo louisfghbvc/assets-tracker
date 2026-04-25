@@ -96,7 +96,7 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ isOpen, onClose, asset,
                         <input
                             type="datetime-local"
                             value={purchaseDate !== undefined ? toLocalDatetimeValue(purchaseDate) : ''}
-                            onChange={(e) => setPurchaseDate(e.target.value ? new Date(e.target.value).getTime() : undefined)}
+                            onChange={(e) => { const ms = new Date(e.target.value).getTime(); setPurchaseDate(e.target.value && !isNaN(ms) ? ms : undefined); }}
                         />
                     </div>
 

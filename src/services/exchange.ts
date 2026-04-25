@@ -107,7 +107,7 @@ export const exchangeService = {
                     }
                     const savedDate = purchaseDateMap.get(upperSymbol);
                     if (savedDate !== undefined) {
-                        (asset as any).purchaseDate = savedDate;
+                        asset.purchaseDate = savedDate;
                     }
                 }
 

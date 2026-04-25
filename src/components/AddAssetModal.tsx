@@ -213,7 +213,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                         <input
                             type="datetime-local"
                             value={new Date(purchaseDate - new Date(purchaseDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-                            onChange={(e) => setPurchaseDate(e.target.value ? new Date(e.target.value).getTime() : Date.now())}
+                            onChange={(e) => { const ms = new Date(e.target.value).getTime(); setPurchaseDate(e.target.value && !isNaN(ms) ? ms : Date.now()); }}
                         />
                     </div>
 

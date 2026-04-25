@@ -186,7 +186,7 @@ export const syncService = {
                 cost: parseFloat(row[colMap.cost]?.toString().replace(/,/g, '')) || 0,
                 lastUpdated: parseInt(row[colMap.lastUpdated]) || Date.now(),
                 source: (row[colMap.source]?.toString().trim() || 'manual') as any,
-                purchaseDate: colMap.purchaseDate !== undefined ? (parseInt(row[colMap.purchaseDate]) || undefined) : undefined
+                purchaseDate: (() => { const p = parseInt(row[colMap.purchaseDate], 10); return colMap.purchaseDate !== undefined && !isNaN(p) ? p : undefined; })()
             };
         }).filter((asset): asset is any => asset !== null);
     },
