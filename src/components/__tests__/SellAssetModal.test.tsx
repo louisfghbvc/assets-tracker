@@ -158,4 +158,35 @@ describe('SellAssetModal', () => {
             }));
         });
     });
+
+    it('sellDate submitted is local midnight (not UTC midnight)', async () => {
+        vi.mocked(sellAsset).mockResolvedValue({} as any);
+        render(<SellAssetModal {...defaultProps} />);
+        const dateInput = screen.getByDisplayValue(/^\d{4}-\d{2}-\d{2}$/);
+        fireEvent.change(dateInput, { target: { value: '2024-03-15' } });
+        fireEvent.change(screen.getByPlaceholderText(/Max 100/i), { target: { value: '5' } });
+        fireEvent.click(screen.getByRole('button', { name: /Confirm Sell/i }));
+        await waitFor(() => {
+            const call = vi.mocked(sellAsset).mock.calls[0][0];
+            const sellDate = call.sellDate as number;
+            const d = new Date(sellDate);
+            // Local midnight: hours, minutes, seconds should all be 0 in local time
+            expect(d.getHours()).toBe(0);
+            expect(d.getMinutes()).toBe(0);
+            expect(d.getSeconds()).toBe(0);
+            // The local date should be 2024-03-15
+            expect(d.getFullYear()).toBe(2024);
+            expect(d.getMonth()).toBe(2); // 0-indexed
+            expect(d.getDate()).toBe(15);
+        });
+    });
+
+    it('today default sell date is in local timezone (YYYY-MM-DD format)', () => {
+        render(<SellAssetModal {...defaultProps} />);
+        const dateInput = screen.getByDisplayValue(/^\d{4}-\d{2}-\d{2}$/);
+        const value = (dateInput as HTMLInputElement).value;
+        // Must be a valid YYYY-MM-DD string matching today in local time
+        const localToday = new Date().toLocaleDateString('sv');
+        expect(value).toBe(localToday);
+    });
 });

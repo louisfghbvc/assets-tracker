@@ -151,8 +151,8 @@ describe('AddAssetModal', () => {
     it('re-opening modal shows fresh purchaseDate, not stale one', async () => {
         const { rerender } = render(<AddAssetModal {...mockProps} />);
 
-        // Grab the initial datetime-local value
-        const dateInputs = () => document.querySelectorAll('input[type="datetime-local"]');
+        // Grab the initial date value
+        const dateInputs = () => document.querySelectorAll('input[type="date"]');
         expect(dateInputs()).toHaveLength(1);
         const firstValue = (dateInputs()[0] as HTMLInputElement).value;
 
@@ -165,10 +165,10 @@ describe('AddAssetModal', () => {
         // Re-open the modal
         rerender(<AddAssetModal {...mockProps} isOpen={true} />);
 
-        // The value should be present (fresh date means it's a valid datetime string)
+        // The value should be present (fresh date means it's a valid date string)
         const newValue = (dateInputs()[0] as HTMLInputElement).value;
-        // Both values are valid datetime-local strings
-        expect(newValue).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-        expect(firstValue).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+        // Both values are valid date-only strings (YYYY-MM-DD)
+        expect(newValue).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(firstValue).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 });
