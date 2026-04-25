@@ -198,6 +198,86 @@ describe('priceService', () => {
         });
     });
 
+    describe('fetchBenchmarkPrice', () => {
+        const symbol = '^TWII';
+        const startDateMs = 1700000000000;
+
+        function makeYahooResponse(closes: (number | null)[], regularMarketPrice?: number) {
+            const meta: Record<string, number> = {};
+            if (regularMarketPrice !== undefined) meta.regularMarketPrice = regularMarketPrice;
+            return {
+                ok: true,
+                text: async () => JSON.stringify({
+                    chart: { result: [{ indicators: { quote: [{ close: closes }] }, meta }] },
+                }),
+            };
+        }
+
+        beforeEach(() => {
+            priceService._benchmarkCache = null;
+        });
+
+        it('returns {startPrice, currentPrice} on success', async () => {
+            (globalThis.fetch as any).mockResolvedValue(makeYahooResponse([null, 18500, 18600], 19000));
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toEqual({ startPrice: 18500, currentPrice: 19000 });
+        });
+
+        it('skips leading null and zero closes to find first valid startPrice', async () => {
+            (globalThis.fetch as any).mockResolvedValue(makeYahooResponse([0, null, 18200], 19000));
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toEqual({ startPrice: 18200, currentPrice: 19000 });
+        });
+
+        it('returns null when all startCloses are null', async () => {
+            (globalThis.fetch as any).mockResolvedValue(makeYahooResponse([null, null], 19000));
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toBeNull();
+        });
+
+        it('returns null when currentPrice is missing from meta', async () => {
+            (globalThis.fetch as any).mockResolvedValue(makeYahooResponse([18500]));
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toBeNull();
+        });
+
+        it('returns null when fetch throws', async () => {
+            (globalThis.fetch as any).mockRejectedValue(new Error('network error'));
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toBeNull();
+        });
+
+        it('returns null when all proxies return non-ok status', async () => {
+            (globalThis.fetch as any).mockResolvedValue({ ok: false });
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toBeNull();
+        });
+
+        it('returns cached result on second call within TTL', async () => {
+            (globalThis.fetch as any).mockResolvedValue(makeYahooResponse([18500], 19000));
+            await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            const callsAfterFirst = (globalThis.fetch as any).mock.calls.length;
+
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toEqual({ startPrice: 18500, currentPrice: 19000 });
+            expect((globalThis.fetch as any).mock.calls.length).toBe(callsAfterFirst);
+        });
+
+        it('fetches fresh data when cache is stale (older than 1h)', async () => {
+            const cacheKey = `${symbol}:${Math.floor(startDateMs / (60 * 60 * 1000))}`;
+            priceService._benchmarkCache = {
+                data: { [cacheKey]: { startPrice: 1, currentPrice: 1 } },
+                fetchedAt: Date.now() - 2 * 60 * 60 * 1000,
+            };
+            (globalThis.fetch as any).mockResolvedValue(makeYahooResponse([18500], 19000));
+
+            const result = await priceService.fetchBenchmarkPrice(symbol, startDateMs);
+            expect(result).toEqual({ startPrice: 18500, currentPrice: 19000 });
+            expect((globalThis.fetch as any).mock.calls.length).toBeGreaterThan(0);
+        });
+
+    });
+
     describe('fetchHistory fallback', () => {
         it('should fallback to web mode when Tauri not available', async () => {
             delete (window as any).__TAURI_INTERNALS__;

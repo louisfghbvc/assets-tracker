@@ -139,6 +139,20 @@ describe('portfolioAnnualizedReturn', () => {
         const { value } = portfolioAnnualizedReturn([a], 32.5);
         expect(value).toBeNull();
     });
+
+    it('uses 32.5 fallback when exchangeRate is 0 for US market', () => {
+        const a = makeAsset({ market: 'US', cost: 100, currentPrice: 200, quantity: 1, purchaseDate: daysAgo(365) });
+        const withZero = portfolioAnnualizedReturn([a], 0);
+        const withDefault = portfolioAnnualizedReturn([a], 32.5);
+        expect(withZero.value).toBeCloseTo(withDefault.value!, 10);
+    });
+
+    it('excludes asset with cost 0 from calculation', () => {
+        const a = makeAsset({ cost: 0, currentPrice: 150, purchaseDate: daysAgo(365) });
+        const { value, excludedCount } = portfolioAnnualizedReturn([a], 32.5);
+        expect(value).toBeNull();
+        expect(excludedCount).toBe(1);
+    });
 });
 
 // ──────────────────────────────────────────────

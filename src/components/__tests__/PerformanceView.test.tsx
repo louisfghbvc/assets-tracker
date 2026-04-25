@@ -203,6 +203,55 @@ describe('PerformanceView', () => {
         });
     });
 
+    describe('benchmark section — lagging badge', () => {
+        it('shows Lagging badge when portfolio return lags the index', async () => {
+            const { priceService } = await import('../../services/price');
+            // Portfolio: cost=100, price=102, 400 days → ~1.8% annualized
+            // Benchmark: 100→150 over 400 days → ~43% annualized → portfolio lags
+            const lowAsset = makeAsset({ cost: 100, currentPrice: 102 });
+            (priceService.fetchBenchmarkPrice as ReturnType<typeof vi.fn>).mockResolvedValue({
+                startPrice: 100,
+                currentPrice: 150,
+            });
+            render(<PerformanceView {...defaultProps} assets={[lowAsset]} />);
+            await waitFor(() => {
+                expect(screen.queryAllByText(/Lagging/i).length).toBeGreaterThan(0);
+            }, { timeout: 3000 });
+        });
+    });
+
+    describe('portfolio summary — excludedCount warning', () => {
+        it('shows partial-data warning when some assets lack purchaseDate', () => {
+            const assets = [
+                makeAsset({ purchaseDate: daysAgo(400) }),
+                makeAsset({ id: 2, symbol: 'NVDA', purchaseDate: undefined }),
+            ];
+            render(<PerformanceView {...defaultProps} assets={assets} />);
+            expect(screen.getByText(/Some assets excluded/i)).toBeInTheDocument();
+        });
+    });
+
+    describe('handleSaveDates — edge cases', () => {
+        it('does not call db.assets.update when dateStr is empty', async () => {
+            const { db } = await import('../../db/database');
+            const assets = [makeAsset({ id: 1, purchaseDate: undefined })];
+            render(<PerformanceView {...defaultProps} assets={assets} />);
+
+            const input = document.querySelector('input[type="date"]') as HTMLInputElement;
+            expect(input).not.toBeNull();
+            fireEvent.change(input, { target: { value: '2023-01-01' } });
+            fireEvent.change(input, { target: { value: '' } });
+
+            const saveBtn = screen.getByText('Save All');
+            expect(saveBtn).not.toBeDisabled();
+            fireEvent.click(saveBtn);
+
+            await new Promise(r => setTimeout(r, 50));
+            expect(db.assets.update).not.toHaveBeenCalled();
+        });
+
+    });
+
     describe('Chinese language', () => {
         it('renders Chinese labels when language=zh', () => {
             render(<PerformanceView {...defaultProps} language="zh" />);
