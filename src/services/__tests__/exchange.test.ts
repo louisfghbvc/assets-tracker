@@ -119,7 +119,7 @@ describe('exchangeService.syncBalances — purchaseDateMap preservation', () => 
 
         vi.mocked(db.transaction).mockImplementation((_mode: any, ..._rest: any[]) => {
             const cb = _rest[_rest.length - 1];
-            return Promise.resolve().then(() => cb());
+            return Promise.resolve().then(() => cb()) as any;
         });
         vi.mocked(db.assets.bulkAdd).mockResolvedValue(undefined as any);
         vi.mocked(db.exchangeConfigs.update).mockResolvedValue(undefined as any);
@@ -145,7 +145,7 @@ describe('exchangeService.syncBalances — purchaseDateMap preservation', () => 
             json: async () => ({ result: true, data: { balances: [{ coin: 'BTC', free: '0.5', frozen: '0.0' }] } }),
         });
 
-        const config = { id: 1, exchangeName: 'pionex', apiKey: 'k', apiSecret: 's', lastSynced: 0 };
+        const config = { id: 1, exchangeName: 'pionex' as const, apiKey: 'k', apiSecret: 's', lastSynced: 0 };
         const result = await exchangeService.syncBalances(config);
 
         expect(result.success).toBe(true);
@@ -168,7 +168,7 @@ describe('exchangeService.syncBalances — purchaseDateMap preservation', () => 
             json: async () => ({ result: true, data: { balances: [{ coin: 'ETH', free: '1.0', frozen: '0.0' }] } }),
         });
 
-        const config = { id: 1, exchangeName: 'pionex', apiKey: 'k', apiSecret: 's', lastSynced: 0 };
+        const config = { id: 1, exchangeName: 'pionex' as const, apiKey: 'k', apiSecret: 's', lastSynced: 0 };
         await exchangeService.syncBalances(config);
 
         const addedAssets = vi.mocked(db.assets.bulkAdd).mock.calls[0][0] as any[];
