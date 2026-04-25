@@ -17,7 +17,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
     const [market, setMarket] = useState<'TW' | 'US' | 'Crypto'>('TW');
     const [quantity, setQuantity] = useState('');
     const [cost, setCost] = useState('');
-    const [purchaseDate, setPurchaseDate] = useState<number>(Date.now());
+    const [purchaseDate, setPurchaseDate] = useState<number>(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime(); });
 
     // Search states
     const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
@@ -30,7 +30,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
             setName('');
             setQuantity('');
             setCost('');
-            setPurchaseDate(Date.now());
+            const n = new Date(); setPurchaseDate(new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime());
             setSuggestions([]);
             setShowSuggestions(false);
         }
@@ -211,9 +211,9 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                     <div className="form-group">
                         <label>{t('purchaseDate')}</label>
                         <input
-                            type="datetime-local"
-                            value={new Date(purchaseDate - new Date(purchaseDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-                            onChange={(e) => { const ms = new Date(e.target.value).getTime(); setPurchaseDate(e.target.value && !isNaN(ms) ? ms : Date.now()); }}
+                            type="date"
+                            value={new Date(purchaseDate - new Date(purchaseDate).getTimezoneOffset() * 60000).toISOString().slice(0, 10)}
+                            onChange={(e) => { if (!e.target.value) return; const [y, m, d] = e.target.value.split('-').map(Number); setPurchaseDate(new Date(y, m - 1, d).getTime()); }}
                         />
                     </div>
 

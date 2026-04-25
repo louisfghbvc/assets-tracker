@@ -156,7 +156,7 @@ describe('googleSheetsService', () => {
         expect(putCall).toBeDefined();
     });
 
-    it('should include purchaseDate as 10th column with PurchaseDate header', async () => {
+    it('should include purchaseDate as 10th column with PurchaseDate header and DateReadable as 11th', async () => {
         const ts = 1700000000000;
         const mockAssets = [{
             recordId: 'r1', symbol: 'AAPL', name: 'Apple', type: 'stock', market: 'US',
@@ -182,9 +182,13 @@ describe('googleSheetsService', () => {
         const body = JSON.parse(valuesCall[1].body);
         expect(body.values[0][9]).toBe('PurchaseDate');
         expect(body.values[1][9]).toBe(ts);
+        // K col header must be DateReadable (NOT PurchaseDateReadable — avoids parser collision)
+        expect(body.values[0][10]).toBe('DateReadable');
+        // K col value must be YYYY-MM-DD format string
+        expect(body.values[1][10]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
-    it('should serialize undefined purchaseDate as empty string', async () => {
+    it('should serialize undefined purchaseDate as empty string, DateReadable also empty', async () => {
         const mockAssets = [{
             recordId: 'r1', symbol: 'AAPL', name: 'Apple', type: 'stock', market: 'US',
             quantity: 10, cost: 150, lastUpdated: 123456, source: 'manual'
@@ -207,6 +211,7 @@ describe('googleSheetsService', () => {
         );
         const body = JSON.parse(valuesCall[1].body);
         expect(body.values[1][9]).toBe('');
+        expect(body.values[1][10]).toBe('');
     });
 
     it('should use column J in portfolio sheet range', async () => {
@@ -227,7 +232,41 @@ describe('googleSheetsService', () => {
         const valuesCall = (globalThis.fetch as any).mock.calls.find((call: any) =>
             call[0]?.includes('/values/Portfolio') && call[1]?.method === 'PUT'
         );
-        expect(valuesCall[0]).toMatch(/J\d+/);
+        expect(valuesCall[0]).toMatch(/K\d+/);
+    });
+
+    it('should include SellDateReadable and PurchaseDateSnapshotReadable cols in SellRecords', async () => {
+        const ts = 1700000000000;
+        const mockSellRecords = [{
+            recordId: 'sr1', symbol: 'AAPL', name: 'Apple', market: 'US',
+            soldQuantity: 5, avgCostAtSale: 150, sellPrice: 200,
+            sellDate: ts, purchaseDateSnapshot: ts - 86400000 * 30,
+            holdingDays: 30, exchangeRateAtSale: 32,
+            realizedGain: 250, realizedGainTWD: 8000, fees: 10
+        }];
+
+        (globalThis.fetch as any).mockImplementation((url: string) => {
+            if (url.includes('batchUpdate')) {
+                return Promise.resolve({ ok: true, json: async () => ({}) });
+            }
+            if (url.includes('values')) {
+                return Promise.resolve({ ok: true, json: async () => ({}) });
+            }
+            return Promise.resolve({ ok: true, json: async () => ({ sheets: [{ properties: { title: 'SellRecords' } }] }) });
+        });
+
+        await googleSheetsService.updateSellRecords('token', 'id', mockSellRecords);
+
+        const valuesCall = (globalThis.fetch as any).mock.calls.find((call: any) =>
+            call[0]?.includes('/values/SellRecords') && call[1]?.method === 'PUT'
+        );
+        expect(valuesCall).toBeDefined();
+        const body = JSON.parse(valuesCall[1].body);
+        expect(body.values[0][14]).toBe('SellDateReadable');
+        expect(body.values[0][15]).toBe('PurchaseDateSnapshotReadable');
+        expect(body.values[1][14]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(body.values[1][15]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(valuesCall[0]).toMatch(/P\d+/);
     });
 
     it('should create new spreadsheet when none found in Drive', async () => {

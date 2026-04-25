@@ -29,8 +29,8 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ isOpen, onClose, asset,
 
     const isSynced = asset.source === 'pionex' || asset.source === 'bitopro';
 
-    const toLocalDatetimeValue = (ts: number) =>
-        new Date(ts - new Date(ts).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const toLocalDateValue = (ts: number) =>
+        new Date(ts - new Date(ts).getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,9 +94,9 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ isOpen, onClose, asset,
                     <div className="form-group">
                         <label>{t('purchaseDate')}</label>
                         <input
-                            type="datetime-local"
-                            value={purchaseDate !== undefined ? toLocalDatetimeValue(purchaseDate) : ''}
-                            onChange={(e) => { const ms = new Date(e.target.value).getTime(); setPurchaseDate(e.target.value && !isNaN(ms) ? ms : undefined); }}
+                            type="date"
+                            value={purchaseDate !== undefined ? toLocalDateValue(purchaseDate) : ''}
+                            onChange={(e) => { if (!e.target.value) { setPurchaseDate(undefined); return; } const [y, m, d] = e.target.value.split('-').map(Number); setPurchaseDate(new Date(y, m - 1, d).getTime()); }}
                         />
                     </div>
 

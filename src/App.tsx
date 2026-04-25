@@ -836,7 +836,10 @@ function App() {
                                 <span className="record-qty">{displayValue(item.quantity)} {t('units')}</span>
                                 <span className="record-cost"> {t('at')} {displayValue(item.cost, '$')}</span>
                                 <span className="record-source"> ({item.source === 'manual' ? t('manual') : t(item.source as any)})</span>
-                                <span className="record-purchase-date"> · {item.purchaseDate ? new Date(item.purchaseDate).toLocaleString() : '—'}</span>
+                                <span className="record-purchase-date"> · {item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : '—'}</span>
+                                {item.purchaseDate && item.purchaseDate > 0 && (
+                                  <span className="record-holding-days"> · {t('holdingDays')}: {Math.floor((Date.now() - item.purchaseDate) / 86400000)} 天</span>
+                                )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <button

@@ -138,6 +138,7 @@ export const translations = {
         invalidSellPriceError: "Please enter a valid sell price",
         invalidFeesError: "Please enter a valid fee amount",
         sellFailedError: "Sell failed, please try again",
+        holdingDays: "Holding Days",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -276,5 +277,6 @@ export const translations = {
         invalidSellPriceError: "請輸入有效賣出價格",
         invalidFeesError: "請輸入有效手續費",
         sellFailedError: "賣出失敗，請重試",
+        holdingDays: "持有天數",
     }
 };

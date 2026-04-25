@@ -63,6 +63,19 @@ describe('syncService parsePortfolioRows — purchaseDate', () => {
         const parsed = syncService.parsePortfolioRows(rows);
         expect(parsed[0].purchaseDate).toBeUndefined();
     });
+
+    it('CRITICAL: DateReadable header in K col does NOT overwrite purchaseDate colMap', () => {
+        // If K col header were named 'PurchaseDateReadable', sync.ts includes('purchase') would map
+        // colMap.purchaseDate to K (index 10), causing parseInt('2024-01-15') = 2024 to silently
+        // corrupt all purchaseDates on restore. 'DateReadable' must NOT trigger this.
+        const rows = [
+            ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate', 'DateReadable'],
+            ['r1', 'AAPL', 'Apple', 'stock', 'US', '10', '150', '1700000000000', 'manual', '1700000000000', '2023-11-14'],
+        ];
+        // @ts-ignore
+        const parsed = syncService.parsePortfolioRows(rows);
+        expect(parsed[0].purchaseDate).toBe(1700000000000); // Must be Unix ms from J col, not 2023 from K col
+    });
 });
 
 describe('syncService history parsing', () => {

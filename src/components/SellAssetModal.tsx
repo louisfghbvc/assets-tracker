@@ -30,7 +30,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv');
 
     useEffect(() => {
         if (!isOpen || !asset) return;
@@ -71,7 +71,9 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
         if (isNaN(price) || price <= 0) { setError(t('invalidSellPriceError')); return; }
         if (feesNum !== undefined && isNaN(feesNum)) { setError(t('invalidFeesError')); return; }
 
-        const sellDate = sellDateStr ? new Date(sellDateStr).getTime() : Date.now();
+        const sellDate = sellDateStr
+            ? (() => { const [y, m, d] = sellDateStr.split('-').map(Number); return new Date(y, m - 1, d).getTime(); })()
+            : (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime(); })();
 
         setIsSubmitting(true);
         try {

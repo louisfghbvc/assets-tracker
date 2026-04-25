@@ -69,8 +69,8 @@ describe('EditAssetModal', () => {
         render(
             <EditAssetModal isOpen={true} onClose={mockOnClose} asset={assetWithDate} t={mockT as any} />
         );
-        // The datetime-local input value should be in local time, not UTC
-        const expectedLocal = new Date(ts - new Date(ts).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        // The date input value should be in local date only (YYYY-MM-DD), not UTC datetime
+        const expectedLocal = new Date(ts - new Date(ts).getTimezoneOffset() * 60000).toISOString().slice(0, 10);
         const dateInput = screen.getByDisplayValue(expectedLocal);
         expect(dateInput).toBeInTheDocument();
     });
@@ -81,7 +81,7 @@ describe('EditAssetModal', () => {
             <EditAssetModal isOpen={true} onClose={mockOnClose} asset={syncedAsset} t={mockT as any} />
         );
         const dateInputs = screen.getAllByDisplayValue(/.*/);
-        const dateInput = dateInputs.find(el => (el as HTMLInputElement).type === 'datetime-local');
+        const dateInput = dateInputs.find(el => (el as HTMLInputElement).type === 'date');
         expect(dateInput).toBeDefined();
         expect(dateInput).not.toBeDisabled();
         // Quantity input should still be disabled for synced assets

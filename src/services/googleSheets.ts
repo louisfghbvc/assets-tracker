@@ -75,17 +75,18 @@ export const googleSheetsService = {
             asset.cost,
             asset.lastUpdated,
             asset.source,
-            asset.purchaseDate ?? ''
+            asset.purchaseDate ?? '',
+            asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString('sv') : ''
         ]);
 
         const body = {
             values: [
-                ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate'],
+                ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate', 'DateReadable'],
                 ...values
             ]
         };
 
-        return this.updateSheetValues(accessToken, spreadsheetId, SHEET_NAME, body, assets.length + 1, 'J');
+        return this.updateSheetValues(accessToken, spreadsheetId, SHEET_NAME, body, assets.length + 1, 'K');
     },
 
     async updateExchanges(accessToken: string, spreadsheetId: string, configs: any[]) {
@@ -142,18 +143,21 @@ export const googleSheetsService = {
             r.exchangeRateAtSale ?? '',
             r.realizedGain,
             r.realizedGainTWD ?? '',
-            r.fees ?? ''
+            r.fees ?? '',
+            r.sellDate ? new Date(r.sellDate).toLocaleDateString('sv') : '',
+            r.purchaseDateSnapshot ? new Date(r.purchaseDateSnapshot).toLocaleDateString('sv') : ''
         ]);
 
         const body = {
             values: [
                 ['RecordId', 'Symbol', 'Name', 'Market', 'SoldQuantity', 'AvgCostAtSale', 'SellPrice', 'SellDate',
-                    'PurchaseDateSnapshot', 'HoldingDays', 'ExchangeRateAtSale', 'RealizedGain', 'RealizedGainTWD', 'Fees'],
+                    'PurchaseDateSnapshot', 'HoldingDays', 'ExchangeRateAtSale', 'RealizedGain', 'RealizedGainTWD', 'Fees',
+                    'SellDateReadable', 'PurchaseDateSnapshotReadable'],
                 ...values
             ]
         };
 
-        return this.updateSheetValues(accessToken, spreadsheetId, SELL_RECORDS_SHEET_NAME, body, sellRecords.length + 1, 'N');
+        return this.updateSheetValues(accessToken, spreadsheetId, SELL_RECORDS_SHEET_NAME, body, sellRecords.length + 1, 'P');
     },
 
     async updateSheetValues(accessToken: string, spreadsheetId: string, sheetName: string, body: any, rowCount: number, lastCol: string) {
