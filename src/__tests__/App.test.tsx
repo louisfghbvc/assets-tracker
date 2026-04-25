@@ -89,7 +89,13 @@ describe('App', () => {
         const mockAssets = [
             { id: 1, symbol: 'AAPL', name: 'Apple', market: 'US', quantity: 10, currentPrice: 150, cost: 140, type: 'stock', source: 'manual', purchaseDate: ts }
         ];
-        vi.mocked(useLiveQuery).mockReturnValue(mockAssets);
+        // useLiveQuery is called for assets, history, and sellRecords — return appropriate value per call
+        vi.mocked(useLiveQuery).mockImplementation((fn: any) => {
+            const key = fn.toString();
+            if (key.includes('sellRecords') || key.includes('SellRecord')) return [];
+            if (key.includes('history') || key.includes('History')) return [];
+            return mockAssets;
+        });
         render(<App />);
 
         // Expand the asset row to reveal individual records
@@ -107,7 +113,12 @@ describe('App', () => {
         const mockAssets = [
             { id: 1, symbol: 'AAPL', name: 'Apple', market: 'US', quantity: 10, currentPrice: 150, cost: 140, type: 'stock', source: 'manual' }
         ];
-        vi.mocked(useLiveQuery).mockReturnValue(mockAssets);
+        vi.mocked(useLiveQuery).mockImplementation((fn: any) => {
+            const key = fn.toString();
+            if (key.includes('sellRecords') || key.includes('SellRecord')) return [];
+            if (key.includes('history') || key.includes('History')) return [];
+            return mockAssets;
+        });
         render(<App />);
 
         const assetItem = document.querySelector('.asset-item');

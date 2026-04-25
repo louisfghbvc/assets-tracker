@@ -34,6 +34,7 @@ import { priceService } from "./services/price";
 import { exchangeService } from "./services/exchange";
 import AddAssetModal from "./components/AddAssetModal";
 import EditAssetModal from "./components/EditAssetModal";
+import SellAssetModal from "./components/SellAssetModal";
 import { translations, Language } from "./translations";
 import { PriceChart } from "./components/PriceChart";
 import { historyService } from "./services/history";
@@ -116,6 +117,8 @@ function App() {
   const [trendRange, setTrendRange] = useState<'1W' | '1M' | '3M' | '1Y' | 'MAX'>('MAX');
   const [isEditingNote, setIsEditingNote] = useState<number | null>(null);
   const [noteContent, setNoteContent] = useState('');
+  const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [sellingAsset, setSellingAsset] = useState<any>(null);
 
   // Persist hideValues
   useEffect(() => {
@@ -204,6 +207,7 @@ function App() {
 
   const assets = useLiveQuery(() => db.assets.toArray());
   const history = useLiveQuery(() => historyService.getHistory());
+  const sellRecords = useLiveQuery(() => db.sellRecords.toArray());
 
   const filteredHistory = useMemo(() => {
     if (!history) return [];
@@ -529,6 +533,11 @@ function App() {
     }, {} as Record<string, number>);
   }, [assets, exchangeRate]);
 
+  const totalRealizedGainTWD = useMemo(() => {
+    if (!sellRecords || sellRecords.length === 0) return null;
+    return sellRecords.reduce((sum, r) => sum + (r.realizedGainTWD ?? r.realizedGain), 0);
+  }, [sellRecords]);
+
   const assetData = useMemo(() => {
     if (!mergedAssets) return [];
     return mergedAssets
@@ -656,6 +665,14 @@ function App() {
             </span>
             <span className="stat-label">{t('totalProfit')}</span>
           </div>
+          {totalRealizedGainTWD !== null && (
+            <div className="balance-stat" style={{ marginTop: '4px' }}>
+              <span className={`stat-value ${totalRealizedGainTWD >= 0 ? 'positive' : 'negative'}`} style={{ fontSize: '0.85em' }}>
+                已實現 {totalRealizedGainTWD >= 0 ? '+' : ''}{displayValue(totalRealizedGainTWD, '$')} TWD
+              </span>
+              <span className="stat-label" style={{ fontSize: '0.75em' }}>已賣出</span>
+            </div>
+          )}
         </div>
       </header >
 
@@ -803,6 +820,7 @@ function App() {
                         <div className="records-list">
                           <p className="records-header">{t('individualRecords')}</p>
                           {asset.items.map((item: any, idx: number) => (
+
                             <div key={item.id || idx} className="record-item">
                               <div className="record-info">
                                 <span className="record-qty">{displayValue(item.quantity)} {t('units')}</span>
@@ -821,6 +839,18 @@ function App() {
                                   title={t('editAsset')}
                                 >
                                   <Pencil size={16} />
+                                </button>
+                                <button
+                                  className="sell-item-btn"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (!(await requireAuth())) return;
+                                    setSellingAsset(item);
+                                    setIsSellModalOpen(true);
+                                  }}
+                                  title="賣出此持倉"
+                                >
+                                  賣
                                 </button>
                                 <button
                                   className={`record-delete-btn ${deletingRecordId === item.id ? 'confirm-mode' : ''}`}
@@ -849,6 +879,28 @@ function App() {
                             </div>
                           ))}
                         </div>
+
+                        {(() => {
+                          const symbolSells = sellRecords?.filter(r => r.symbol === asset.symbol) ?? [];
+                          return (
+                            <div className="sell-history-section">
+                              <p className="records-header">已賣出記錄</p>
+                              {symbolSells.length === 0 ? (
+                                <p className="sell-history-empty">尚無賣出記錄</p>
+                              ) : (
+                                symbolSells.sort((a, b) => b.sellDate - a.sellDate).map(sr => (
+                                  <div key={sr.id ?? sr.recordId} className="sell-history-item">
+                                    <span className="sell-history-date">{new Date(sr.sellDate).toLocaleDateString()}</span>
+                                    <span className="sell-history-detail">賣出 {sr.soldQuantity} 股 @ ${sr.sellPrice}</span>
+                                    <span className={`sell-history-gain ${sr.realizedGain >= 0 ? 'positive' : 'negative'}`}>
+                                      → 已實現 {sr.realizedGain >= 0 ? '+' : ''}{(sr.realizedGainTWD ?? sr.realizedGain).toLocaleString(undefined, { maximumFractionDigits: 0 })} {sr.market === 'TW' ? 'TWD' : 'TWD≈'}
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -859,6 +911,49 @@ function App() {
                   </div>
                 )}
               </div>
+
+              {/* Closed Positions */}
+              {(() => {
+                const activeSymbols = new Set(mergedAssets.map(a => a.symbol));
+                const closedSymbols = [...new Set((sellRecords ?? []).map(r => r.symbol))].filter(sym => !activeSymbols.has(sym));
+                if (closedSymbols.length === 0) return null;
+                return (
+                  <div className="closed-positions-section">
+                    <p className="section-sub-header">已平倉</p>
+                    {closedSymbols.map(sym => {
+                      const records = (sellRecords ?? []).filter(r => r.symbol === sym).sort((a, b) => b.sellDate - a.sellDate);
+                      const firstName = records[0]?.name ?? sym;
+                      const [closedExpanded, setClosedExpanded] = [expandedSymbol === `closed:${sym}`, (v: boolean) => setExpandedSymbol(v ? `closed:${sym}` : null)];
+                      return (
+                        <div key={sym} className="asset-item closed-position" onClick={() => setClosedExpanded(!closedExpanded)}>
+                          <div className="asset-summary">
+                            <div className="asset-info">
+                              <p className="asset-name">{firstName}</p>
+                              <p className="asset-symbol">{sym} · 已完全賣出</p>
+                            </div>
+                            <ChevronRight size={20} className={`expand-chevron ${closedExpanded ? 'rotated' : ''}`} />
+                          </div>
+                          {closedExpanded && (
+                            <div className="asset-details-expanded animate-slide-down">
+                              <div className="sell-history-section">
+                                {records.map(sr => (
+                                  <div key={sr.id ?? sr.recordId} className="sell-history-item">
+                                    <span className="sell-history-date">{new Date(sr.sellDate).toLocaleDateString()}</span>
+                                    <span className="sell-history-detail">賣出 {sr.soldQuantity} 股 @ ${sr.sellPrice}</span>
+                                    <span className={`sell-history-gain ${sr.realizedGain >= 0 ? 'positive' : 'negative'}`}>
+                                      → 已實現 {sr.realizedGain >= 0 ? '+' : ''}{(sr.realizedGainTWD ?? sr.realizedGain).toLocaleString(undefined, { maximumFractionDigits: 0 })} TWD
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </section>
           </>
         )
@@ -1149,6 +1244,14 @@ function App() {
         onClose={() => setIsEditModalOpen(false)}
         asset={editingAsset}
         t={t}
+      />
+
+      <SellAssetModal
+        isOpen={isSellModalOpen}
+        onClose={() => { setIsSellModalOpen(false); setSellingAsset(null); }}
+        asset={sellingAsset}
+        currentExchangeRate={exchangeRate}
+        onSold={() => setSyncStatus('賣出成功！')}
       />
 
       {/* Tab Bar (for Mobile) */}
