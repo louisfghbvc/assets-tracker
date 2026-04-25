@@ -12,6 +12,7 @@ export interface Asset {
     currentPrice?: number;
     lastUpdated: number;      // Timestamp
     source: 'manual' | 'pionex' | 'bitopro';
+    purchaseDate?: number;    // Unix ms timestamp of purchase
 }
 
 export interface ExchangeConfig {
@@ -64,6 +65,11 @@ export class AssetTrackerDatabase extends Dexie {
 
         this.version(5).stores({
             history: '++id, date'
+        });
+
+        // Add purchaseDate field — no stores() change needed (non-indexed field)
+        this.version(6).upgrade(() => {
+            // No migration: existing assets get purchaseDate=undefined and show '—'
         });
     }
 }

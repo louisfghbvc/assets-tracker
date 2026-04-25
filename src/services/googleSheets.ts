@@ -69,17 +69,18 @@ export const googleSheetsService = {
             asset.quantity,
             asset.cost,
             asset.lastUpdated,
-            asset.source
+            asset.source,
+            asset.purchaseDate ?? ''
         ]);
 
         const body = {
             values: [
-                ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source'],
+                ['RecordId', 'Symbol', 'Name', 'Type', 'Market', 'Quantity', 'Cost', 'LastUpdated', 'Source', 'PurchaseDate'],
                 ...values
             ]
         };
 
-        return this.updateSheetValues(accessToken, spreadsheetId, SHEET_NAME, body, assets.length + 1, 'I');
+        return this.updateSheetValues(accessToken, spreadsheetId, SHEET_NAME, body, assets.length + 1, 'J');
     },
 
     async updateExchanges(accessToken: string, spreadsheetId: string, configs: any[]) {

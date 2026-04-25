@@ -17,6 +17,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
     const [market, setMarket] = useState<'TW' | 'US' | 'Crypto'>('TW');
     const [quantity, setQuantity] = useState('');
     const [cost, setCost] = useState('');
+    const [purchaseDate, setPurchaseDate] = useState<number>(Date.now());
 
     // Search states
     const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
@@ -29,6 +30,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
             setName('');
             setQuantity('');
             setCost('');
+            setPurchaseDate(Date.now());
             setSuggestions([]);
             setShowSuggestions(false);
         }
@@ -81,7 +83,8 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
             cost: parseFloat(cost) || 0,
             currentPrice: parseFloat(cost) || 0, // Initialize with cost
             lastUpdated: Date.now(),
-            source: 'manual'
+            source: 'manual',
+            purchaseDate
         });
 
         // Trigger refresh in parent
@@ -203,6 +206,15 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetA
                                 required
                             />
                         </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label>{t('purchaseDate')}</label>
+                        <input
+                            type="datetime-local"
+                            value={new Date(purchaseDate - new Date(purchaseDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                            onChange={(e) => setPurchaseDate(e.target.value ? new Date(e.target.value).getTime() : Date.now())}
+                        />
                     </div>
 
                     <button type="submit" className="submit-btn">

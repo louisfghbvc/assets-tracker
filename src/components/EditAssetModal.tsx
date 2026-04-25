@@ -14,18 +14,23 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ isOpen, onClose, asset,
     const [quantity, setQuantity] = useState('');
     const [cost, setCost] = useState('');
     const [name, setName] = useState('');
+    const [purchaseDate, setPurchaseDate] = useState<number | undefined>(undefined);
 
     useEffect(() => {
         if (asset) {
             setQuantity(asset.quantity.toString());
             setCost(asset.cost.toString());
             setName(asset.name);
+            setPurchaseDate(asset.purchaseDate);
         }
     }, [asset, isOpen]);
 
     if (!isOpen || !asset) return null;
 
     const isSynced = asset.source === 'pionex' || asset.source === 'bitopro';
+
+    const toLocalDatetimeValue = (ts: number) =>
+        new Date(ts - new Date(ts).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,7 +40,8 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ isOpen, onClose, asset,
             quantity: isSynced ? asset.quantity : parseFloat(quantity) || 0,
             cost: parseFloat(cost) || 0,
             name: name.trim() || asset.symbol,
-            lastUpdated: Date.now()
+            lastUpdated: Date.now(),
+            purchaseDate
         });
 
         onClose();
@@ -83,6 +89,15 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ isOpen, onClose, asset,
                                 required
                             />
                         </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label>{t('purchaseDate')}</label>
+                        <input
+                            type="datetime-local"
+                            value={purchaseDate !== undefined ? toLocalDatetimeValue(purchaseDate) : ''}
+                            onChange={(e) => setPurchaseDate(e.target.value ? new Date(e.target.value).getTime() : undefined)}
+                        />
                     </div>
 
                     <button type="submit" className="submit-btn" style={{ background: 'var(--primary)' }}>
