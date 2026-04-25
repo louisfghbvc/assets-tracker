@@ -126,7 +126,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                 const ret = a.purchaseDate && a.currentPrice && a.cost
                     ? annualizedReturn(a.cost, a.currentPrice, a.purchaseDate)
                     : null;
-                const pnl = a.currentPrice
+                const pnl = (a.currentPrice && a.cost)
                     ? (a.currentPrice - a.cost) * a.quantity
                     : 0;
                 return {
@@ -180,7 +180,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                     };
                 })
             );
-        });
+        }).catch(err => console.error('Benchmark state update failed:', err));
 
         return () => { cancelled = true; };
     }, [startDate, holdingDays, benchmarkKey]);
@@ -193,7 +193,9 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                     if (!dateStr) return Promise.resolve();
                     const ms = new Date(dateStr + 'T00:00:00').getTime();
                     if (!ms || Number.isNaN(ms)) return Promise.resolve();
-                    return db.assets.update(parseInt(idStr), { purchaseDate: ms });
+                    const id = parseInt(idStr);
+                    if (isNaN(id)) return Promise.resolve();
+                    return db.assets.update(id, { purchaseDate: ms });
                 })
             );
             setPendingDates({});
@@ -248,8 +250,9 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                     <h3 style={{ marginBottom: 12 }}>{t('performanceSummary')}</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
-                                {t('annualizedReturn')}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 4 }}
+                                title={t('cagrMethodologyNote')}>
+                                {t('annualizedReturn')} ⓘ
                             </div>
                             <div style={{
                                 fontSize: '1.6rem',
@@ -331,7 +334,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                                         )}
                                     </td>
                                     <td style={{ textAlign: 'right', padding: '8px 8px' }}>
-                                        {asset.currentPrice ? (
+                                        {(asset.currentPrice && asset.cost) ? (
                                             <span style={{
                                                 color: pnl >= 0 ? 'var(--positive)' : 'var(--negative)',
                                                 fontSize: '0.8rem',

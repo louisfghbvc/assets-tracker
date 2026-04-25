@@ -161,6 +161,7 @@ export const translations = {
         benchmarkPeriod: "Period: {days} days",
         assetColumn: "Asset",
         shortHoldingWarning: "Holding < 30 days — figure may be extreme",
+        cagrMethodologyNote: "Weighted average of per-asset annualized returns. Each asset uses its own holding period — not a single-period total return.",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -322,5 +323,6 @@ export const translations = {
         benchmarkPeriod: "比較期間: {days} 天",
         assetColumn: "資產",
         shortHoldingWarning: "持有不足 30 天 — 數值可能偏高",
+        cagrMethodologyNote: "各資產年化報酬率的加權平均。每項資產使用自身持有期間計算，非單一期間總報酬。",
     }
 };

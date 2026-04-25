@@ -420,7 +420,7 @@ export const priceService = {
     _benchmarkCache: null as { data: Record<string, { startPrice: number; currentPrice: number }>; fetchedAt: number } | null,
 
     async fetchBenchmarkPrice(symbol: string, startDateMs: number): Promise<{ startPrice: number; currentPrice: number } | null> {
-        const ALLOWED_BENCHMARK_SYMBOLS = new Set(['^TWII', '^GSPC', 'SPY']);
+        const ALLOWED_BENCHMARK_SYMBOLS = new Set(['^TWII', 'SPY']);
         if (!ALLOWED_BENCHMARK_SYMBOLS.has(symbol)) return null;
 
         const cacheKey = `${symbol}:${Math.floor(startDateMs / BENCHMARK_CACHE_TTL_MS)}`; // key by hour bucket

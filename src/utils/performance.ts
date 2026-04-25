@@ -10,7 +10,9 @@ export function annualizedReturn(
     if (!purchaseDate || purchaseDate <= 0) return null;
     const holdingDays = Math.floor((Date.now() - purchaseDate) / 86400000);
     if (holdingDays < 1) return null;
-    return Math.pow(currentPrice / cost, 365 / holdingDays) - 1;
+    const result = Math.pow(currentPrice / cost, 365 / holdingDays) - 1;
+    if (!isFinite(result)) return null;
+    return result;
 }
 
 export function portfolioAnnualizedReturn(
