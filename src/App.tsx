@@ -27,7 +27,7 @@ import {
 import "./App.css";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "./db/database";
+import { db, type Asset, type SellRecord } from "./db/database";
 import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
 import { priceService } from "./services/price";
@@ -118,7 +118,7 @@ function App() {
   const [isEditingNote, setIsEditingNote] = useState<number | null>(null);
   const [noteContent, setNoteContent] = useState('');
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
-  const [sellingAsset, setSellingAsset] = useState<any>(null);
+  const [sellingAsset, setSellingAsset] = useState<Asset | null>(null);
 
   // Persist hideValues
   useEffect(() => {
@@ -538,6 +538,16 @@ function App() {
     return sellRecords.reduce((sum, r) => sum + (r.realizedGainTWD ?? r.realizedGain), 0);
   }, [sellRecords]);
 
+  const sellsBySymbol = useMemo(() => {
+    const map = new Map<string, SellRecord[]>();
+    for (const r of sellRecords ?? []) {
+      const bucket = map.get(r.symbol);
+      if (bucket) bucket.push(r);
+      else map.set(r.symbol, [r]);
+    }
+    return map;
+  }, [sellRecords]);
+
   const assetData = useMemo(() => {
     if (!mergedAssets) return [];
     return mergedAssets
@@ -881,7 +891,7 @@ function App() {
                         </div>
 
                         {(() => {
-                          const symbolSells = sellRecords?.filter(r => r.symbol === asset.symbol) ?? [];
+                          const symbolSells = sellsBySymbol.get(asset.symbol) ?? [];
                           return (
                             <div className="sell-history-section">
                               <p className="records-header">{t('sellHistory')}</p>
@@ -921,7 +931,7 @@ function App() {
                   <div className="closed-positions-section">
                     <p className="section-sub-header">{t('closedPositions')}</p>
                     {closedSymbols.map(sym => {
-                      const records = (sellRecords ?? []).filter(r => r.symbol === sym).sort((a, b) => b.sellDate - a.sellDate);
+                      const records = (sellsBySymbol.get(sym) ?? []).slice().sort((a, b) => b.sellDate - a.sellDate);
                       const firstName = records[0]?.name ?? sym;
                       const [closedExpanded, setClosedExpanded] = [expandedSymbol === `closed:${sym}`, (v: boolean) => setExpandedSymbol(v ? `closed:${sym}` : null)];
                       return (

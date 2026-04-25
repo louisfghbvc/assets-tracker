@@ -58,7 +58,7 @@ export async function sellAsset(params: SellAssetParams): Promise<SellRecord> {
             exchangeRateAtSale: asset.market !== 'TW' ? exchangeRateAtSale : undefined,
             realizedGain,
             realizedGainTWD,
-            fees: fees !== undefined ? fees : undefined,
+            fees,
         };
 
         await db.sellRecords.add(record as SellRecord);
