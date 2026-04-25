@@ -103,9 +103,13 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
 
     const [pendingDates, setPendingDates] = useState<Record<number, string>>({});
     const [saving, setSaving] = useState(false);
+    const benchmarkLabels: Record<string, { en: string; zh: string }> = {
+        '^TWII': { en: 'Taiwan Weighted Index (TAIEX)', zh: '台灣加權指數 (TAIEX)' },
+        'SPY': { en: 'S&P 500 (SPY)', zh: '標普500 (SPY)' },
+    };
     const [benchmarks, setBenchmarks] = useState<BenchmarkData[]>([
-        { symbol: '^TWII', label: '台灣加權指數 (TAIEX)', annReturn: null, loading: true, error: false },
-        { symbol: 'SPY', label: '標普500 (SPY)', annReturn: null, loading: true, error: false },
+        { symbol: '^TWII', label: '', annReturn: null, loading: true, error: false },
+        { symbol: 'SPY', label: '', annReturn: null, loading: true, error: false },
     ]);
     const [benchmarkKey, setBenchmarkKey] = useState(0); // trigger re-fetch on retry
 
@@ -365,7 +369,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                             padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.06)',
                         }}>
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{b.label}</span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{benchmarkLabels[b.symbol]?.[language] ?? b.symbol}</span>
                             {b.loading ? (
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>...</span>
                             ) : b.error ? (

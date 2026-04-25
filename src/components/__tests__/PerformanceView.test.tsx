@@ -111,8 +111,8 @@ describe('PerformanceView', () => {
         it('renders benchmark section', () => {
             render(<PerformanceView {...defaultProps} />);
             expect(screen.getByText(/Benchmark/i)).toBeInTheDocument();
-            expect(screen.getByText('台灣加權指數 (TAIEX)')).toBeInTheDocument();
-            expect(screen.getByText('標普500 (SPY)')).toBeInTheDocument();
+            expect(screen.getByText('Taiwan Weighted Index (TAIEX)')).toBeInTheDocument();
+            expect(screen.getByText('S&P 500 (SPY)')).toBeInTheDocument();
         });
     });
 
