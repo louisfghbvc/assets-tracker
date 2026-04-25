@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-04-25
+
+### Added
+- **Performance tab (績效)**: New tab in the main navigation shows portfolio-level analytics — annualized return (CAGR), holding period, and a benchmark comparison against TAIEX (^TWII) and S&P 500 (^GSPC).
+- **Portfolio annualized return**: Market-value-weighted CAGR across all dated holdings. Assets missing a purchase date are excluded with a visible count warning.
+- **Benchmark comparison**: Fetches the index price at your portfolio start date and compares your CAGR against both TAIEX and SPY simultaneously. Shows "Beating" / "Lagging" with the gap in percentage points.
+- **Asset performance ranking**: Per-asset CAGR sorted from best to worst with unrealized P&L, so you can see your top and bottom performers at a glance.
+- **Batch purchase-date setup**: If any assets lack a purchase date, a setup panel appears inline — enter all dates in one pass and save with a single button.
+- **Annualized return utilities**: `src/utils/performance.ts` — pure functions for `annualizedReturn`, `portfolioAnnualizedReturn`, `benchmarkAnnualizedReturn`, `portfolioHoldingDays`, `portfolioStartDate`. All independently testable.
+- **Benchmark fetch with 1-hour cache**: `priceService.fetchBenchmarkPrice()` — narrow epoch fetch for historical index prices with a module-level 1-hour cache (constant `BENCHMARK_CACHE_TTL_MS`) to avoid redundant API calls.
+
+### Fixed
+- Benchmark fetch effect now guards against stale results with a `cancelled` flag — navigating away before the fetch completes no longer overwrites the next view's state.
+- Timezone-safe purchase date parsing: dates are stored as local midnight (`T00:00:00`) so the displayed date matches what the user entered regardless of timezone.
+- `Math.min(...largeArray)` replaced with `.reduce()` in performance utils to prevent call stack overflow on large portfolios.
+
+### For contributors
+- `SetupSection` is a module-level named component (not defined inside `PerformanceView`'s render) — this is required so React doesn't unmount it on every parent render, which caused focus loss on date inputs.
+- `BENCHMARK_CACHE_TTL_MS = 60 * 60 * 1000` replaces the three former magic numbers in `price.ts`.
+- All user-facing strings in `PerformanceView` are wired through the `t()` helper; no bare inline ternaries.
+
 ## [0.4.0] - 2026-04-25
 
 ### Added
