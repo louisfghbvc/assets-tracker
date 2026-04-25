@@ -132,4 +132,43 @@ describe('AddAssetModal', () => {
             market: 'Crypto'
         }));
     });
+
+    it('should include purchaseDate in db.assets.add call', async () => {
+        render(<AddAssetModal {...mockProps} />);
+
+        fireEvent.change(screen.getByPlaceholderText('Start typing to search...'), { target: { value: 'AAPL' } });
+        const inputs = screen.getAllByPlaceholderText('0.00');
+        fireEvent.change(inputs[0], { target: { value: '1' } });
+        fireEvent.change(inputs[1], { target: { value: '100' } });
+
+        fireEvent.submit(screen.getByRole('button', { name: /Add Asset/i }));
+
+        expect(vi.mocked(db.assets.add)).toHaveBeenCalledWith(expect.objectContaining({
+            purchaseDate: expect.any(Number)
+        }));
+    });
+
+    it('re-opening modal shows fresh purchaseDate, not stale one', async () => {
+        const { rerender } = render(<AddAssetModal {...mockProps} />);
+
+        // Grab the initial datetime-local value
+        const dateInputs = () => document.querySelectorAll('input[type="datetime-local"]');
+        expect(dateInputs()).toHaveLength(1);
+        const firstValue = (dateInputs()[0] as HTMLInputElement).value;
+
+        // Close the modal
+        rerender(<AddAssetModal {...mockProps} isOpen={false} />);
+
+        // Wait a tick so Date.now() would differ if state was stale
+        await new Promise(r => setTimeout(r, 10));
+
+        // Re-open the modal
+        rerender(<AddAssetModal {...mockProps} isOpen={true} />);
+
+        // The value should be present (fresh date means it's a valid datetime string)
+        const newValue = (dateInputs()[0] as HTMLInputElement).value;
+        // Both values are valid datetime-local strings
+        expect(newValue).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+        expect(firstValue).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    });
 });

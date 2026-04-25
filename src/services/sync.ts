@@ -127,13 +127,14 @@ export const syncService = {
                     if (cell.includes('cost') || cell.includes('成本')) colMap.cost = idx;
                     if (cell.includes('updated') || cell.includes('time') || cell.includes('更新時間')) colMap.lastUpdated = idx;
                     if (cell.includes('source') || cell.includes('來源')) colMap.source = idx;
+                    if (cell.includes('purchase') || cell.includes('purchasedate')) colMap.purchaseDate = idx;
                 });
                 break;
             }
         }
 
         if (headerIndex === -1) {
-            colMap = { recordId: 0, symbol: 1, name: 2, type: 3, market: 4, quantity: 5, cost: 6, lastUpdated: 7, source: 8 };
+            colMap = { recordId: 0, symbol: 1, name: 2, type: 3, market: 4, quantity: 5, cost: 6, lastUpdated: 7, source: 8, purchaseDate: 9 };
         }
 
         if (colMap.symbol === undefined) return [];
@@ -184,7 +185,8 @@ export const syncService = {
                 quantity: parseFloat(row[colMap.quantity]?.toString().replace(/,/g, '')) || 0,
                 cost: parseFloat(row[colMap.cost]?.toString().replace(/,/g, '')) || 0,
                 lastUpdated: parseInt(row[colMap.lastUpdated]) || Date.now(),
-                source: (row[colMap.source]?.toString().trim() || 'manual') as any
+                source: (row[colMap.source]?.toString().trim() || 'manual') as any,
+                purchaseDate: (() => { const p = parseInt(row[colMap.purchaseDate], 10); return colMap.purchaseDate !== undefined && !isNaN(p) ? p : undefined; })()
             };
         }).filter((asset): asset is any => asset !== null);
     },

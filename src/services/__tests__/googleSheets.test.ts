@@ -156,6 +156,80 @@ describe('googleSheetsService', () => {
         expect(putCall).toBeDefined();
     });
 
+    it('should include purchaseDate as 10th column with PurchaseDate header', async () => {
+        const ts = 1700000000000;
+        const mockAssets = [{
+            recordId: 'r1', symbol: 'AAPL', name: 'Apple', type: 'stock', market: 'US',
+            quantity: 10, cost: 150, lastUpdated: 123456, source: 'manual', purchaseDate: ts
+        }];
+
+        (globalThis.fetch as any).mockImplementation((url: string) => {
+            if (url.includes('batchUpdate')) {
+                return Promise.resolve({ ok: true, json: async () => ({}) });
+            }
+            if (url.includes('values')) {
+                return Promise.resolve({ ok: true, json: async () => ({}) });
+            }
+            return Promise.resolve({ ok: true, json: async () => ({ sheets: [{ properties: { title: 'Portfolio' } }] }) });
+        });
+
+        await googleSheetsService.updatePortfolio('token', 'id', mockAssets);
+
+        const valuesCall = (globalThis.fetch as any).mock.calls.find((call: any) =>
+            call[0]?.includes('/values/Portfolio') && call[1]?.method === 'PUT'
+        );
+        expect(valuesCall).toBeDefined();
+        const body = JSON.parse(valuesCall[1].body);
+        expect(body.values[0][9]).toBe('PurchaseDate');
+        expect(body.values[1][9]).toBe(ts);
+    });
+
+    it('should serialize undefined purchaseDate as empty string', async () => {
+        const mockAssets = [{
+            recordId: 'r1', symbol: 'AAPL', name: 'Apple', type: 'stock', market: 'US',
+            quantity: 10, cost: 150, lastUpdated: 123456, source: 'manual'
+        }];
+
+        (globalThis.fetch as any).mockImplementation((url: string) => {
+            if (url.includes('batchUpdate')) {
+                return Promise.resolve({ ok: true, json: async () => ({}) });
+            }
+            if (url.includes('values')) {
+                return Promise.resolve({ ok: true, json: async () => ({}) });
+            }
+            return Promise.resolve({ ok: true, json: async () => ({ sheets: [{ properties: { title: 'Portfolio' } }] }) });
+        });
+
+        await googleSheetsService.updatePortfolio('token', 'id', mockAssets);
+
+        const valuesCall = (globalThis.fetch as any).mock.calls.find((call: any) =>
+            call[0]?.includes('/values/Portfolio') && call[1]?.method === 'PUT'
+        );
+        const body = JSON.parse(valuesCall[1].body);
+        expect(body.values[1][9]).toBe('');
+    });
+
+    it('should use column J in portfolio sheet range', async () => {
+        const mockAssets = [{
+            recordId: 'r1', symbol: 'AAPL', name: 'Apple', type: 'stock', market: 'US',
+            quantity: 10, cost: 150, lastUpdated: 123456, source: 'manual'
+        }];
+
+        (globalThis.fetch as any).mockImplementation((url: string) => {
+            if (url.includes('batchUpdate')) {
+                return Promise.resolve({ ok: true, json: async () => ({}) });
+            }
+            return Promise.resolve({ ok: true, json: async () => ({ sheets: [{ properties: { title: 'Portfolio' } }] }) });
+        });
+
+        await googleSheetsService.updatePortfolio('token', 'id', mockAssets);
+
+        const valuesCall = (globalThis.fetch as any).mock.calls.find((call: any) =>
+            call[0]?.includes('/values/Portfolio') && call[1]?.method === 'PUT'
+        );
+        expect(valuesCall[0]).toMatch(/J\d+/);
+    });
+
     it('should create new spreadsheet when none found in Drive', async () => {
         (globalThis.fetch as any).mockImplementation((url: string, options: any) => {
             if (url.includes('files?q=')) {

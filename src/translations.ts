@@ -110,6 +110,7 @@ export const translations = {
         addNote: "Add Note",
         editNote: "Edit Note",
         notePlaceholder: "Enter memo for this day...",
+        purchaseDate: "Purchase Date",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -220,5 +221,6 @@ export const translations = {
         addNote: "新增備註",
         editNote: "編輯備註",
         notePlaceholder: "輸入當日紀事...",
+        purchaseDate: "購買日期",
     }
 };

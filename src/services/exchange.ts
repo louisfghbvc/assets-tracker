@@ -95,12 +95,19 @@ export const exchangeService = {
                 }
 
                 const costMap = new Map<string, number>(existingAssets.map(a => [a.symbol.toUpperCase(), a.cost]));
+                const purchaseDateMap = new Map<string, number | undefined>(
+                    existingAssets.map(a => [a.symbol.toUpperCase(), a.purchaseDate])
+                );
 
                 // Restore existing costs
                 for (const asset of assetsToUpdate) {
                     const upperSymbol = asset.symbol.toUpperCase();
                     if (costMap.has(upperSymbol)) {
                         asset.cost = costMap.get(upperSymbol)!;
+                    }
+                    const savedDate = purchaseDateMap.get(upperSymbol);
+                    if (savedDate !== undefined) {
+                        asset.purchaseDate = savedDate;
                     }
                 }
 
