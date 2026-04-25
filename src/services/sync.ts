@@ -1,4 +1,4 @@
-import { db, type HistoryRecord } from "../db/database";
+import { db, type HistoryRecord, type SellRecord } from "../db/database";
 import { googleSheetsService } from "./googleSheets";
 
 export const syncService = {
@@ -10,6 +10,7 @@ export const syncService = {
             const localAssets = await db.assets.toArray();
             const localExchanges = await db.exchangeConfigs.toArray();
             const localHistory = await db.history.toArray();
+            const localSellRecords = await db.sellRecords.toArray();
 
             // Patch missing recordIds for legacy data
             for (const asset of localAssets) {
@@ -25,6 +26,7 @@ export const syncService = {
             await googleSheetsService.updatePortfolio(accessToken, spreadsheetId, localAssets);
             await googleSheetsService.updateExchanges(accessToken, spreadsheetId, localExchanges);
             await googleSheetsService.updateHistory(accessToken, spreadsheetId, localHistory);
+            await googleSheetsService.updateSellRecords(accessToken, spreadsheetId, localSellRecords);
 
             await db.syncLogs.add({
                 lastSyncTime: Date.now(),
@@ -56,8 +58,12 @@ export const syncService = {
             const historyRows = await googleSheetsService.fetchHistory(accessToken, spreadsheetId);
             const importedHistory = this.parseHistoryRows(historyRows);
 
-            // 4. Update local database
-            await db.transaction('rw', db.assets, db.exchangeConfigs, db.syncLogs, db.history, async () => {
+            // 4. Fetch SellRecords
+            const sellRecordRows = await googleSheetsService.fetchSellRecords(accessToken, spreadsheetId);
+            const importedSellRecords = this.parseSellRecordRows(sellRecordRows);
+
+            // 5. Update local database
+            await db.transaction('rw', [db.assets, db.exchangeConfigs, db.syncLogs, db.history, db.sellRecords], async () => {
                 await db.assets.clear();
                 if (portfolioAssets.length > 0) await db.assets.bulkAdd(portfolioAssets);
 
@@ -93,10 +99,13 @@ export const syncService = {
                     await db.history.bulkAdd(mergedHistory);
                 }
 
+                await db.sellRecords.clear();
+                if (importedSellRecords.length > 0) await db.sellRecords.bulkAdd(importedSellRecords);
+
                 await db.syncLogs.add({
                     lastSyncTime: Date.now(),
                     status: 'success',
-                    message: `Restored ${portfolioAssets.length} assets, ${importedExchanges.length} exchanges, and ${importedHistory.length} history records`
+                    message: `Restored ${portfolioAssets.length} assets, ${importedExchanges.length} exchanges, ${importedHistory.length} history records, and ${importedSellRecords.length} sell records`
                 });
             });
 
@@ -223,6 +232,71 @@ export const syncService = {
                 lastSynced: parseInt(row[colMap.lastSynced]) || 0
             };
         }).filter(c => c !== null);
+    },
+
+    parseSellRecordRows(allRows: any[]): Omit<SellRecord, 'id'>[] {
+        if (allRows.length === 0) return [];
+
+        let headerIndex = -1;
+        let colMap: Record<string, number> = {};
+
+        for (let i = 0; i < Math.min(allRows.length, 5); i++) {
+            const row = allRows[i].map((c: any) => c.toString().toLowerCase().trim());
+            if (row.includes('recordid') || row.includes('symbol')) {
+                headerIndex = i;
+                row.forEach((cell: string, idx: number) => {
+                    if (cell === 'recordid') colMap.recordId = idx;
+                    if (cell === 'symbol') colMap.symbol = idx;
+                    if (cell === 'name') colMap.name = idx;
+                    if (cell === 'market') colMap.market = idx;
+                    if (cell === 'soldquantity') colMap.soldQuantity = idx;
+                    if (cell === 'avgcostatsale') colMap.avgCostAtSale = idx;
+                    if (cell === 'sellprice') colMap.sellPrice = idx;
+                    if (cell === 'selldate') colMap.sellDate = idx;
+                    if (cell === 'purchasedatesnapshot') colMap.purchaseDateSnapshot = idx;
+                    if (cell === 'holdingdays') colMap.holdingDays = idx;
+                    if (cell === 'exchangerateatsale') colMap.exchangeRateAtSale = idx;
+                    if (cell === 'realizedgain') colMap.realizedGain = idx;
+                    if (cell === 'realizedgaintwd') colMap.realizedGainTWD = idx;
+                    if (cell === 'fees') colMap.fees = idx;
+                });
+                break;
+            }
+        }
+
+        if (headerIndex === -1 || colMap.symbol === undefined) return [];
+
+        const dataRows = allRows.slice(headerIndex + 1);
+        return dataRows.map((row: any): Omit<SellRecord, 'id'> | null => {
+            const symbol = row[colMap.symbol]?.toString().trim();
+            if (!symbol) return null;
+            const pNum = (idx: number | undefined) => {
+                if (idx === undefined) return undefined;
+                const v = parseFloat(row[idx]);
+                return isNaN(v) ? undefined : v;
+            };
+            const pInt = (idx: number | undefined) => {
+                if (idx === undefined) return undefined;
+                const v = parseInt(row[idx], 10);
+                return isNaN(v) ? undefined : v;
+            };
+            return {
+                recordId: row[colMap.recordId]?.toString().trim() || `restored-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                symbol,
+                name: row[colMap.name]?.toString().trim() || symbol,
+                market: (row[colMap.market]?.toString().trim() as 'TW' | 'US' | 'Crypto') || 'US',
+                soldQuantity: pNum(colMap.soldQuantity) ?? 0,
+                avgCostAtSale: pNum(colMap.avgCostAtSale) ?? 0,
+                sellPrice: pNum(colMap.sellPrice) ?? 0,
+                sellDate: pInt(colMap.sellDate) ?? Date.now(),
+                purchaseDateSnapshot: pInt(colMap.purchaseDateSnapshot),
+                holdingDays: pNum(colMap.holdingDays),
+                exchangeRateAtSale: pNum(colMap.exchangeRateAtSale),
+                realizedGain: pNum(colMap.realizedGain) ?? 0,
+                realizedGainTWD: pNum(colMap.realizedGainTWD),
+                fees: pNum(colMap.fees),
+            };
+        }).filter((r): r is Omit<SellRecord, 'id'> => r !== null);
     },
 
     parseHistoryRows(allRows: any[]): HistoryRecord[] {

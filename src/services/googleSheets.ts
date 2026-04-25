@@ -1,6 +1,7 @@
 const SHEET_NAME = 'Portfolio';
 const CONFIG_SHEET_NAME = 'ExchangeConfigs';
 const HISTORY_SHEET_NAME = 'History';
+const SELL_RECORDS_SHEET_NAME = 'SellRecords';
 
 export interface GoogleSheetAsset {
     recordId: string;
@@ -24,6 +25,10 @@ export const googleSheetsService = {
 
     async fetchHistory(accessToken: string, spreadsheetId: string) {
         return this.fetchSheetValues(accessToken, spreadsheetId, HISTORY_SHEET_NAME);
+    },
+
+    async fetchSellRecords(accessToken: string, spreadsheetId: string) {
+        return this.fetchSheetValues(accessToken, spreadsheetId, SELL_RECORDS_SHEET_NAME);
     },
 
     async fetchSheetValues(accessToken: string, spreadsheetId: string, sheetName: string) {
@@ -121,6 +126,36 @@ export const googleSheetsService = {
         return this.updateSheetValues(accessToken, spreadsheetId, HISTORY_SHEET_NAME, body, history.length + 1, 'D');
     },
 
+    async updateSellRecords(accessToken: string, spreadsheetId: string, sellRecords: any[]) {
+        await this.ensureSheetExists(accessToken, spreadsheetId, SELL_RECORDS_SHEET_NAME);
+        const values = sellRecords.map(r => [
+            r.recordId,
+            r.symbol,
+            r.name,
+            r.market,
+            r.soldQuantity,
+            r.avgCostAtSale,
+            r.sellPrice,
+            r.sellDate,
+            r.purchaseDateSnapshot ?? '',
+            r.holdingDays ?? '',
+            r.exchangeRateAtSale ?? '',
+            r.realizedGain,
+            r.realizedGainTWD ?? '',
+            r.fees ?? ''
+        ]);
+
+        const body = {
+            values: [
+                ['RecordId', 'Symbol', 'Name', 'Market', 'SoldQuantity', 'AvgCostAtSale', 'SellPrice', 'SellDate',
+                    'PurchaseDateSnapshot', 'HoldingDays', 'ExchangeRateAtSale', 'RealizedGain', 'RealizedGainTWD', 'Fees'],
+                ...values
+            ]
+        };
+
+        return this.updateSheetValues(accessToken, spreadsheetId, SELL_RECORDS_SHEET_NAME, body, sellRecords.length + 1, 'N');
+    },
+
     async updateSheetValues(accessToken: string, spreadsheetId: string, sheetName: string, body: any, rowCount: number, lastCol: string) {
         const response = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A1:${lastCol}${rowCount}?valueInputOption=USER_ENTERED`,
@@ -166,7 +201,7 @@ export const googleSheetsService = {
 
     async clearSheet(accessToken: string, spreadsheetId: string) {
         // Clear sheets if they exist
-        for (const name of [SHEET_NAME, CONFIG_SHEET_NAME, HISTORY_SHEET_NAME]) {
+        for (const name of [SHEET_NAME, CONFIG_SHEET_NAME, HISTORY_SHEET_NAME, SELL_RECORDS_SHEET_NAME]) {
             // Check if sheet exists before clearing
             const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
                 headers: { Authorization: `Bearer ${accessToken}` }
