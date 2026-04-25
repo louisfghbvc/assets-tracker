@@ -246,7 +246,8 @@ describe('PerformanceView', () => {
             expect(saveBtn).not.toBeDisabled();
             fireEvent.click(saveBtn);
 
-            await new Promise(r => setTimeout(r, 50));
+            // The guard (empty dateStr → skip) runs before any await in handleSaveDates
+            await Promise.resolve();
             expect(db.assets.update).not.toHaveBeenCalled();
         });
 

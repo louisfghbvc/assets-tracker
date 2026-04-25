@@ -159,6 +159,8 @@ export const translations = {
         myPortfolio: "My Portfolio",
         assetsMissingPurchaseDate: "assets missing purchase date",
         benchmarkPeriod: "Period: {days} days",
+        assetColumn: "Asset",
+        shortHoldingWarning: "Holding < 30 days — figure may be extreme",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -318,5 +320,7 @@ export const translations = {
         myPortfolio: "我的投資組合",
         assetsMissingPurchaseDate: "項資產缺少購買日期",
         benchmarkPeriod: "比較期間: {days} 天",
+        assetColumn: "資產",
+        shortHoldingWarning: "持有不足 30 天 — 數值可能偏高",
     }
 };

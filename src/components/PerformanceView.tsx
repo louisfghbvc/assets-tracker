@@ -108,8 +108,8 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
         'SPY': { en: 'S&P 500 (SPY)', zh: '標普500 (SPY)' },
     };
     const [benchmarks, setBenchmarks] = useState<BenchmarkData[]>([
-        { symbol: '^TWII', label: '', annReturn: null, loading: true, error: false },
-        { symbol: 'SPY', label: '', annReturn: null, loading: true, error: false },
+        { symbol: '^TWII', label: '', annReturn: null, loading: false, error: false },
+        { symbol: 'SPY', label: '', annReturn: null, loading: false, error: false },
     ]);
     const [benchmarkKey, setBenchmarkKey] = useState(0); // trigger re-fetch on retry
 
@@ -192,7 +192,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                 Object.entries(pendingDates).map(([idStr, dateStr]) => {
                     if (!dateStr) return Promise.resolve();
                     const ms = new Date(dateStr + 'T00:00:00').getTime();
-                    if (!ms) return Promise.resolve();
+                    if (!ms || Number.isNaN(ms)) return Promise.resolve();
                     return db.assets.update(parseInt(idStr), { purchaseDate: ms });
                 })
             );
@@ -291,7 +291,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                 <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    {language === 'zh' ? '資產' : 'Asset'}
+                                    {t('assetColumn')}
                                 </th>
                                 <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                     {t('holdingDays')}
@@ -323,7 +323,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                                             <span style={{ color: annReturn >= 0 ? 'var(--positive)' : 'var(--negative)' }}>
                                                 {hideValues ? '****' : fmt(annReturn)}
                                                 {shortHolding && (
-                                                    <span title="Holding < 30 days — figure may be extreme" style={{ marginLeft: 4, fontSize: '0.7rem' }}>⚠️</span>
+                                                    <span title={t('shortHoldingWarning')} style={{ marginLeft: 4, fontSize: '0.7rem' }}>⚠️</span>
                                                 )}
                                             </span>
                                         ) : (
@@ -336,7 +336,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                                                 color: pnl >= 0 ? 'var(--positive)' : 'var(--negative)',
                                                 fontSize: '0.8rem',
                                             }}>
-                                                {hideValues ? '****' : fmtTWD(pnl * (asset.market === 'TW' ? 1 : exchangeRate))}
+                                                {hideValues ? '****' : fmtTWD(pnl * (asset.market === 'TW' ? 1 : (exchangeRate || 32.5)))}
                                             </span>
                                         ) : (
                                             <span style={{ color: 'var(--text-secondary)' }}>—</span>
