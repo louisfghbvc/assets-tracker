@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2026-04-26
+
+### Fixed
+- **Asset Performance Ranking now groups by symbol+market** — previously showed one row per buy transaction; now shows one row per asset with market-value-weighted CAGR and summed P&L across all lots. Resolves duplicate rows for multi-lot positions.
+
 ## [0.5.0] - 2026-04-25
 
 ### Added

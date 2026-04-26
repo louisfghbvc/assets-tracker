@@ -117,10 +117,10 @@ export function groupedAssetReturns(
         let pnlTWD = 0;
         let hasCostData = false;
         for (const a of lots) {
-            if (a.currentPrice && a.cost) {
-                pnlTWD += (a.currentPrice - a.cost) * a.quantity * rate;
-                hasCostData = true;
-            }
+            if (!a.currentPrice || !a.cost) continue;
+            if (a.currentPrice <= 0 || a.cost <= 0) continue;
+            pnlTWD += (a.currentPrice - a.cost) * a.quantity * rate;
+            hasCostData = true;
         }
 
         result.push({

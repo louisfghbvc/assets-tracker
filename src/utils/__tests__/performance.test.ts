@@ -294,4 +294,47 @@ describe('groupedAssetReturns', () => {
         const result = groupedAssetReturns([old, fresh], 32);
         expect(result[0].shortHolding).toBe(false);
     });
+
+    it('returns empty array for empty assets input', () => {
+        expect(groupedAssetReturns([], 32)).toHaveLength(0);
+    });
+
+    it('computes negative pnlTWD for a loss position', () => {
+        const a = makeAsset({ id: 1, market: 'US', cost: 150, currentPrice: 100, quantity: 10 });
+        const result = groupedAssetReturns([a], 32);
+        expect(result[0].pnlTWD).toBeCloseTo((100 - 150) * 10 * 32, 1);
+        expect(result[0].pnlTWD).toBeLessThan(0);
+    });
+
+    it('hasCostData true even when only one lot in group has cost data', () => {
+        const valid = makeAsset({ id: 1, market: 'TW', cost: 100, currentPrice: 150, quantity: 10 });
+        const invalid = makeAsset({ id: 2, market: 'TW', cost: 0, currentPrice: 0, quantity: 5 });
+        const result = groupedAssetReturns([valid, invalid], 32);
+        expect(result[0].hasCostData).toBe(true);
+        // P&L only from the valid lot (TW market, rate=1)
+        expect(result[0].pnlTWD).toBeCloseTo((150 - 100) * 10, 1);
+    });
+
+    it('shortHolding is false at exactly 30 days (boundary: < 30, not <=)', () => {
+        const a = makeAsset({ purchaseDate: daysAgo(30) });
+        const result = groupedAssetReturns([a], 32);
+        expect(result[0].shortHolding).toBe(false);
+    });
+
+    it('uses 32.5 fallback when exchangeRate is 0 for US market P&L', () => {
+        const a = makeAsset({ id: 1, market: 'US', cost: 100, currentPrice: 110, quantity: 10 });
+        const withZero = groupedAssetReturns([a], 0);
+        const withDefault = groupedAssetReturns([a], 32.5);
+        expect(withZero[0].pnlTWD).toBeCloseTo(withDefault[0].pnlTWD, 1);
+    });
+
+    it('computes weighted CAGR using only lots with valid annualizedReturn', () => {
+        // lot with holdingDays < 1 → annualizedReturn returns null → excluded from weight
+        const validLot = makeAsset({ id: 1, cost: 100, currentPrice: 200, quantity: 10, purchaseDate: daysAgo(365) });
+        const sameDayLot = makeAsset({ id: 2, cost: 100, currentPrice: 110, quantity: 10, purchaseDate: NOW });
+        const result = groupedAssetReturns([validLot, sameDayLot], 32);
+        // only validLot contributes → annReturn ≈ 100%
+        expect(result[0].annReturn).not.toBeNull();
+        expect(result[0].annReturn!).toBeCloseTo(1.0, 2);
+    });
 });
