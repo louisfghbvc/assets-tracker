@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db, type Asset } from '../db/database';
 import {
-    annualizedReturn,
+    groupedAssetReturns,
     portfolioAnnualizedReturn,
     benchmarkAnnualizedReturn,
     portfolioHoldingDays,
@@ -24,14 +24,6 @@ interface BenchmarkData {
     annReturn: number | null;
     loading: boolean;
     error: boolean;
-}
-
-interface AssetReturn {
-    asset: Asset;
-    annReturn: number | null;
-    holdingDays: number;
-    pnl: number;
-    shortHolding: boolean;
 }
 
 interface SetupSectionProps {
@@ -118,31 +110,7 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
         const startDate = portfolioStartDate(assets);
         const portfolioResult = portfolioAnnualizedReturn(assets, exchangeRate);
 
-        const assetReturns: AssetReturn[] = assets
-            .map(a => {
-                const days = a.purchaseDate
-                    ? Math.floor((Date.now() - a.purchaseDate) / 86400000)
-                    : 0;
-                const ret = a.purchaseDate && a.currentPrice && a.cost
-                    ? annualizedReturn(a.cost, a.currentPrice, a.purchaseDate)
-                    : null;
-                const pnl = (a.currentPrice && a.cost)
-                    ? (a.currentPrice - a.cost) * a.quantity
-                    : 0;
-                return {
-                    asset: a,
-                    annReturn: ret,
-                    holdingDays: days,
-                    pnl,
-                    shortHolding: days > 0 && days < 30,
-                };
-            })
-            .sort((a, b) => {
-                if (a.annReturn === null && b.annReturn === null) return 0;
-                if (a.annReturn === null) return 1;
-                if (b.annReturn === null) return -1;
-                return b.annReturn - a.annReturn;
-            });
+        const assetReturns = groupedAssetReturns(assets, exchangeRate);
 
         return { assetReturns, portfolioResult, holdingDays, startDate };
     }, [assets, exchangeRate]);
@@ -308,13 +276,13 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                             </tr>
                         </thead>
                         <tbody>
-                            {assetReturns.map(({ asset, annReturn, holdingDays: days, pnl, shortHolding }) => (
-                                <tr key={asset.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            {assetReturns.map(({ symbol, market, name, annReturn, holdingDays: days, pnlTWD, shortHolding, hasCostData }) => (
+                                <tr key={`${symbol}::${market}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                     <td style={{ padding: '8px 8px', fontWeight: 600 }}>
-                                        {asset.symbol}
-                                        {asset.name && asset.name !== asset.symbol && (
+                                        {symbol}
+                                        {name && name !== symbol && (
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                                                {asset.name}
+                                                {name}
                                             </div>
                                         )}
                                     </td>
@@ -334,12 +302,12 @@ export function PerformanceView({ assets, exchangeRate, language, hideValues }: 
                                         )}
                                     </td>
                                     <td style={{ textAlign: 'right', padding: '8px 8px' }}>
-                                        {(asset.currentPrice && asset.cost) ? (
+                                        {hasCostData ? (
                                             <span style={{
-                                                color: pnl >= 0 ? 'var(--positive)' : 'var(--negative)',
+                                                color: pnlTWD >= 0 ? 'var(--positive)' : 'var(--negative)',
                                                 fontSize: '0.8rem',
                                             }}>
-                                                {hideValues ? '****' : fmtTWD(pnl * (asset.market === 'TW' ? 1 : (exchangeRate || 32.5)))}
+                                                {hideValues ? '****' : fmtTWD(pnlTWD)}
                                             </span>
                                         ) : (
                                             <span style={{ color: 'var(--text-secondary)' }}>—</span>

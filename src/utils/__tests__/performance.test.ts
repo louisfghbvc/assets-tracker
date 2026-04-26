@@ -5,6 +5,7 @@ import {
     benchmarkAnnualizedReturn,
     portfolioHoldingDays,
     portfolioStartDate,
+    groupedAssetReturns,
 } from '../performance';
 import type { Asset } from '../../db/database';
 
@@ -204,5 +205,93 @@ describe('portfolioStartDate', () => {
         const early = daysAgo(500);
         const assets = [makeAsset({ purchaseDate: daysAgo(200) }), makeAsset({ id: 2, purchaseDate: early })];
         expect(portfolioStartDate(assets)).toBe(early);
+    });
+});
+
+// ──────────────────────────────────────────────
+// groupedAssetReturns
+// ──────────────────────────────────────────────
+describe('groupedAssetReturns', () => {
+    it('groups two lots of the same symbol+market into one row', () => {
+        const lot1 = makeAsset({ id: 1, symbol: 'AAPL', market: 'US' });
+        const lot2 = makeAsset({ id: 2, symbol: 'AAPL', market: 'US', cost: 120, quantity: 5 });
+        const result = groupedAssetReturns([lot1, lot2], 32);
+        expect(result).toHaveLength(1);
+        expect(result[0].symbol).toBe('AAPL');
+    });
+
+    it('keeps same symbol in different markets as separate rows', () => {
+        const tw = makeAsset({ id: 1, symbol: 'AAPL', market: 'TW' });
+        const us = makeAsset({ id: 2, symbol: 'AAPL', market: 'US' });
+        const result = groupedAssetReturns([tw, us], 32);
+        expect(result).toHaveLength(2);
+    });
+
+    it('uses earliest purchaseDate for holdingDays', () => {
+        const older = makeAsset({ id: 1, purchaseDate: daysAgo(400) });
+        const newer = makeAsset({ id: 2, purchaseDate: daysAgo(200) });
+        const result = groupedAssetReturns([older, newer], 32);
+        expect(result[0].holdingDays).toBe(400);
+    });
+
+    it('computes market-value-weighted CAGR across lots', () => {
+        // lot1: cost=100, price=200, 365d → 100% return, mktValue=2000
+        const lot1 = makeAsset({ id: 1, cost: 100, currentPrice: 200, quantity: 10, purchaseDate: daysAgo(365) });
+        // lot2: cost=100, price=100, 365d → 0% return, mktValue=1000
+        const lot2 = makeAsset({ id: 2, cost: 100, currentPrice: 100, quantity: 10, purchaseDate: daysAgo(365) });
+        const result = groupedAssetReturns([lot1, lot2], 32);
+        // weighted = (1.0 * 2000 + 0 * 1000) / 3000
+        expect(result[0].annReturn).toBeCloseTo(2000 / 3000, 4);
+    });
+
+    it('sums P&L across lots in TWD for TW market', () => {
+        const lot1 = makeAsset({ id: 1, market: 'TW', cost: 100, currentPrice: 150, quantity: 10 });
+        const lot2 = makeAsset({ id: 2, market: 'TW', cost: 100, currentPrice: 80, quantity: 5 });
+        const result = groupedAssetReturns([lot1, lot2], 32);
+        // (150-100)*10 + (80-100)*5 = 500 - 100 = 400 TWD
+        expect(result[0].pnlTWD).toBeCloseTo(400, 1);
+    });
+
+    it('applies exchangeRate to US lot P&L', () => {
+        const a = makeAsset({ id: 1, market: 'US', cost: 100, currentPrice: 110, quantity: 10 });
+        const result = groupedAssetReturns([a], 32);
+        // (110-100)*10*32 = 3200 TWD
+        expect(result[0].pnlTWD).toBeCloseTo(3200, 1);
+    });
+
+    it('returns annReturn null for group with no dated lots', () => {
+        const a = makeAsset({ purchaseDate: undefined });
+        const result = groupedAssetReturns([a], 32);
+        expect(result[0].annReturn).toBeNull();
+    });
+
+    it('hasCostData is false when no lot has both currentPrice and cost', () => {
+        const a = makeAsset({ cost: 0, currentPrice: 0 });
+        const result = groupedAssetReturns([a], 32);
+        expect(result[0].hasCostData).toBe(false);
+    });
+
+    it('sorts by annReturn descending, nulls last', () => {
+        const a = makeAsset({ id: 1, symbol: 'AAA', cost: 100, currentPrice: 200, quantity: 1, purchaseDate: daysAgo(365) });
+        const b = makeAsset({ id: 2, symbol: 'BBB', cost: 100, currentPrice: 110, quantity: 1, purchaseDate: daysAgo(365) });
+        const c = makeAsset({ id: 3, symbol: 'CCC', purchaseDate: undefined });
+        const result = groupedAssetReturns([b, c, a], 32);
+        expect(result[0].symbol).toBe('AAA');
+        expect(result[1].symbol).toBe('BBB');
+        expect(result[2].symbol).toBe('CCC');
+    });
+
+    it('shortHolding is true when earliest purchaseDate < 30 days ago', () => {
+        const a = makeAsset({ purchaseDate: daysAgo(10) });
+        const result = groupedAssetReturns([a], 32);
+        expect(result[0].shortHolding).toBe(true);
+    });
+
+    it('shortHolding uses earliest date, not latest', () => {
+        // one lot old, one lot very new — earliest is old → not short
+        const old = makeAsset({ id: 1, purchaseDate: daysAgo(200) });
+        const fresh = makeAsset({ id: 2, purchaseDate: daysAgo(5) });
+        const result = groupedAssetReturns([old, fresh], 32);
+        expect(result[0].shortHolding).toBe(false);
     });
 });
