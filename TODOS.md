@@ -14,6 +14,20 @@
 
 **Depends on / blocked by:** Nothing — can be a standalone cleanup PR.
 
+## performance.ts — Realized P&L by Calendar Year (Tax Report View)
+
+**What:** 在績效頁籤加入「已實現損益年報」區塊，依年份整理 SellRecords：賣出標的、已實現損益、持有天數、手續費。
+
+**Why:** 資料已全在 `sellRecords` 表，零新邏輯。報稅季最直接實用的功能，使用者不需要另開 Google Sheets 手動加總。
+
+**Pros:** 零新 API call；DB 資料現成；可顯示短期/長期損益分類（持有 < 365 天 vs ≥ 365 天）。
+
+**Cons:** UI 工作量（Table + 年份 tab）；短期/長期稅率分界依國家而異（台灣/美股規則不同），顯示時需注意不要誤導。
+
+**Context:** 在 `/plan-ceo-review` 數據分析規劃（2026-04-26）中評估，選為下一批 analytics 功能後延後處理。A（走勢圖）、B（貢獻度）、D（熱力圖）優先。
+
+**Depends on / blocked by:** 無，可獨立出貨。
+
 ## performance.ts — Include realized gains (SellRecords) in portfolio annualized return
 
 **What:** Extend `portfolioAnnualizedReturn()` to include closed positions (fully sold assets). Use `SellRecord.purchaseDateSnapshot`, `SellRecord.holdingDays`, and `SellRecord.realizedGain` to compute a time-weighted return that covers both open and closed positions.

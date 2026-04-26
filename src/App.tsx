@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import {
   TrendingUp,
   Wallet,
@@ -90,6 +90,15 @@ const AssetLogo = ({ symbol, market, fallbackIcon }: { symbol: string, market: s
     </div>
   );
 };
+
+const COLORS = ["#3b82f6", "#6366f1", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#84cc16", "#06b6d4"];
+const MARKET_COLORS: Record<string, string[]> = {
+  TW:     ['#3b82f6', '#2563eb', '#60a5fa', '#1d4ed8', '#93c5fd'],
+  US:     ['#10b981', '#059669', '#34d399', '#047857', '#6ee7b7'],
+  Crypto: ['#f59e0b', '#d97706', '#fbbf24', '#b45309', '#fcd34d'],
+};
+const MARKET_ORDER = ['TW', 'US', 'Crypto'];
+const MARKET_LABELS: Record<string, string> = { TW: '台股', US: '美股', Crypto: '加密貨幣' };
 
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -554,13 +563,26 @@ function App() {
     return mergedAssets
       .map(asset => ({
         name: asset.symbol,
-        value: asset.market === 'TW' ? asset.totalValue : asset.totalValue * exchangeRate
+        market: asset.market as 'TW' | 'US' | 'Crypto',
+        value: asset.market === 'TW' ? asset.totalValue : asset.totalValue * exchangeRate,
       }))
       .filter(d => d.value > 0)
-      .sort((a, b) => b.value - a.value);
+      .sort((a, b) => {
+        const oa = MARKET_ORDER.indexOf(a.market); const ob = MARKET_ORDER.indexOf(b.market);
+        const mDiff = (oa === -1 ? 999 : oa) - (ob === -1 ? 999 : ob);
+        return mDiff !== 0 ? mDiff : b.value - a.value;
+      });
   }, [mergedAssets, exchangeRate]);
 
-  const COLORS = ["#3b82f6", "#6366f1", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#84cc16", "#06b6d4"];
+  const assetColors = useMemo(() => {
+    const counters: Record<string, number> = { TW: 0, US: 0, Crypto: 0 };
+    return assetData.map(entry => {
+      const palette = MARKET_COLORS[entry.market] ?? COLORS;
+      const idx = counters[entry.market] ?? 0;
+      counters[entry.market] = idx + 1;
+      return palette[idx % palette.length];
+    });
+  }, [assetData]);
 
   // ---------------------------------------------------------
   // RENDER CONDITIONAL: LOGIN SCREEN vs APP
@@ -1084,7 +1106,10 @@ function App() {
                         stroke="none"
                       >
                         {(statsView === 'market' ? marketData : assetData).map((_entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={statsView === 'market' ? COLORS[index % COLORS.length] : assetColors[index]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip
@@ -1105,19 +1130,43 @@ function App() {
                   </div>
 
                   <div className="custom-legend-container">
-                    {(statsView === 'market' ? marketData : assetData).map((entry, index) => {
-                      const total = (statsView === 'market' ? marketData : assetData).reduce((s, i) => s + i.value, 0);
-                      const percent = total > 0 ? (entry.value / total * 100).toFixed(1) : '0.0';
-                      return (
-                        <div key={entry.name} className="custom-legend-item">
-                          <div className="legend-info">
-                            <span className="legend-color-dot" style={{ background: COLORS[index % COLORS.length] }}></span>
-                            <span className="legend-text">{entry.name}</span>
+                    {statsView === 'market' ? (() => {
+                      const total = marketData.reduce((s, i) => s + i.value, 0);
+                      return marketData.map((entry, index) => {
+                        const percent = total > 0 ? (entry.value / total * 100).toFixed(1) : '0.0';
+                        return (
+                          <div key={entry.name} className="custom-legend-item">
+                            <div className="legend-info">
+                              <span className="legend-color-dot" style={{ background: COLORS[index % COLORS.length] }}></span>
+                              <span className="legend-text">{entry.name}</span>
+                            </div>
+                            <span className="legend-percent">{percent}%</span>
                           </div>
-                          <span className="legend-percent">{percent}%</span>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })() : (() => {
+                      const total = assetData.reduce((s, i) => s + i.value, 0);
+                      let lastMarket = '';
+                      return assetData.map((entry, index) => {
+                        const showHeader = entry.market !== lastMarket;
+                        lastMarket = entry.market;
+                        const percent = total > 0 ? (entry.value / total * 100).toFixed(1) : '0.0';
+                        return (
+                          <Fragment key={entry.name}>
+                            {showHeader && (
+                              <div className="legend-market-header">{MARKET_LABELS[entry.market] ?? entry.market}</div>
+                            )}
+                            <div className="custom-legend-item">
+                              <div className="legend-info">
+                                <span className="legend-color-dot" style={{ background: assetColors[index] }}></span>
+                                <span className="legend-text">{entry.name}</span>
+                              </div>
+                              <span className="legend-percent">{percent}%</span>
+                            </div>
+                          </Fragment>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               ) : (

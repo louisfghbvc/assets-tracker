@@ -1826,6 +1826,16 @@ input:focus {
   color: #fff;
 }
 
+.legend-market-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 12px 2px;
+  margin-top: 4px;
+}
+
 /* Search Suggestions */
 .suggestions-container {
   position: absolute;
