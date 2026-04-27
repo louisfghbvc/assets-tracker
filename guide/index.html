@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AssetTracker 使用教學</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #12121a;
+      --surface: #1c1c28;
+      --border: rgba(255,255,255,0.08);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #60a5fa;
+      --code-bg: rgba(255,255,255,0.07);
+      --heading: #f1f5f9;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      padding: 0 1rem 4rem;
+    }
+    .container { max-width: 680px; margin: 0 auto; }
+    .search-bar {
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      padding: 0.75rem 0;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 0.5rem 0.875rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.875rem;
+      outline: none;
+    }
+    .search-bar input::placeholder { color: var(--muted); }
+    .search-bar input:focus { border-color: var(--accent); }
+    .app-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 0 0.5rem;
+    }
+    .app-bar a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
+    .app-bar a:hover { text-decoration: underline; }
+    h1 { font-size: 1.6rem; color: var(--heading); margin: 1.5rem 0 0.5rem; }
+    h2 { font-size: 1.2rem; color: var(--heading); margin: 2rem 0 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border); scroll-margin-top: 80px; }
+    h3 { font-size: 1rem; color: var(--heading); margin: 1.25rem 0 0.5rem; scroll-margin-top: 80px; }
+    p { margin: 0.75rem 0; }
+    a { color: var(--accent); }
+    ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+    li { margin: 0.25rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 0.5rem 1rem;
+      margin: 1rem 0;
+      background: var(--surface);
+      border-radius: 0 8px 8px 0;
+      color: var(--muted);
+    }
+    blockquote strong { color: var(--text); }
+    code {
+      background: var(--code-bg);
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Fira Mono', monospace;
+      font-size: 0.85em;
+    }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; }
+    pre code { background: none; padding: 0; }
+    img { width: 100%; border-radius: 12px; margin: 0.75rem 0; border: 1px solid var(--border); }
+    strong { color: var(--heading); }
+    mark { background: rgba(96,165,250,0.35); color: inherit; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="app-bar">
+      <span style="color:var(--muted);font-size:0.8rem">AssetTracker 使用教學</span>
+      <a href="../">← 返回 App</a>
+    </div>
+    <div class="search-bar">
+      <input type="search" id="guide-search" placeholder="搜尋教學內容…" autocomplete="off">
+    </div>
+    <div id="guide-body">
+<h1>AssetTracker 使用教學</h1>
+<blockquote>
+<p>你好！這份教學會一步一步帶你完成 AssetTracker 的安裝與常用操作，不需要任何技術背景。<br>有任何問題，歡迎直接問我。</p>
+</blockquote>
+<hr>
+<h2>目錄</h2>
+<ol>
+<li><a href="#1-%E5%AE%89%E8%A3%9D%E8%88%87%E9%96%8B%E5%A7%8B%E4%BD%BF%E7%94%A8">安裝與開始使用</a></li>
+<li><a href="#2-%E6%96%B0%E5%A2%9E%E7%AC%AC%E4%B8%80%E7%AD%86%E8%B3%87%E7%94%A2">新增第一筆資產</a></li>
+<li><a href="#3-%E9%9B%B2%E7%AB%AF%E5%82%99%E4%BB%BDgoogle-sheets-%E5%90%8C%E6%AD%A5">雲端備份：Google Sheets 同步</a></li>
+<li><a href="#4-%E8%B3%A3%E5%87%BA%E8%88%87%E6%90%8D%E7%9B%8A%E8%A8%98%E9%8C%84">賣出與損益記錄</a></li>
+<li><a href="#5-%E7%B8%BE%E6%95%88%E5%88%86%E6%9E%90">績效分析</a></li>
+<li><a href="#6-%E8%B3%87%E7%94%A2%E9%85%8D%E7%BD%AE%E5%9C%96%E8%A1%A8%E7%B5%B1%E8%A8%88%E9%A0%81%E7%B1%A4">資產配置圖表（統計頁籤）</a></li>
+<li><a href="#7-%E8%B3%87%E7%94%A2%E8%B5%B0%E5%8B%A2%E5%9C%96%E8%B6%A8%E5%8B%A2%E9%A0%81%E7%B1%A4">資產走勢圖（趨勢頁籤）</a></li>
+<li><a href="#8-%E8%A8%AD%E5%AE%9A%E4%BA%A4%E6%98%93%E6%89%80-api-%E5%90%8C%E6%AD%A5">設定：交易所 API 同步</a></li>
+</ol>
+<hr>
+<h2>1. 安裝與開始使用</h2>
+<h3>開啟 App</h3>
+<p>用手機瀏覽器打開以下網址，你會看到登入畫面：</p>
+<img src="images/install-home.png" width="100%" alt="AssetTracker 登入畫面"><p>點「<strong>使用 Google 登入</strong>」，選擇你的 Google 帳號並授權，就會進入 App 主畫面。</p>
+<hr>
+<h3>iPhone 安裝到主畫面（可選）</h3>
+<p>把 App 加入主畫面後，用起來就跟一般 App 一樣，不需要每次開瀏覽器。</p>
+<blockquote>
+<p><strong>注意：</strong> iPhone 必須用 <strong>Safari</strong> 才能加入主畫面，其他瀏覽器（Chrome、Firefox）沒有這個選項。</p>
+</blockquote>
+<ol>
+<li>用 Safari 開啟 App 網址</li>
+<li>點畫面底部的 <strong>分享按鈕</strong>（方形加箭頭的圖示）</li>
+<li>向下滑，找到「<strong>加入主畫面</strong>」</li>
+<li>點「<strong>新增</strong>」，完成！</li>
+</ol>
+<hr>
+<h3>Android 安裝到主畫面（可選）</h3>
+<ol>
+<li>用 Chrome 開啟 App 網址</li>
+<li>畫面底部或網址列旁會出現「<strong>安裝 App</strong>」的提示橫幅，點選它</li>
+<li>確認安裝後，App 圖示就會出現在主畫面</li>
+</ol>
+<hr>
+<h3>第一次開啟後的畫面</h3>
+<p>登入後，你會看到空白的資產列表。頁面頂部顯示「<strong>總資產估值 $0</strong>」，右下角有藍色的「<strong>＋</strong>」按鈕可以新增第一筆資產。</p>
+<img src="images/install-first-open.png" width="100%" alt="第一次登入後的空白畫面"><hr>
+<h2>2. 新增第一筆資產</h2>
+<h3>點選「＋」新增資產</h3>
+<p>點畫面右下角的藍色「<strong>＋</strong>」按鈕，就會彈出新增資產的視窗。</p>
+<img src="images/add-asset-button.png" width="100%" alt="資產列表，右下角有新增按鈕"><hr>
+<h3>填寫資產資料</h3>
+<img src="images/add-asset-form.png" width="100%" alt="新增資產表單"><p>各欄位說明：</p>
+<ul>
+<li><p><strong>市場</strong>：選擇你的資產類型</p>
+<ul>
+<li><code>台股</code> — 台灣上市股票（例如台積電、台達電）</li>
+<li><code>美股</code> — 美國股票（例如 Apple、NVIDIA）</li>
+<li><code>加密貨幣</code> — 比特幣、以太坊等</li>
+</ul>
+</li>
+<li><p><strong>股票代號</strong>：</p>
+<ul>
+<li>台股填數字代碼，例如 <strong>2330</strong>（台積電）</li>
+<li>美股填英文代號，例如 <strong>AAPL</strong>（Apple）</li>
+<li>加密貨幣填 <strong>BTC</strong>、<strong>ETH</strong> 等</li>
+</ul>
+</li>
+<li><p><strong>成本價</strong>：你<strong>買入時的每股價格</strong>，不是現在的市價。例如你以每股 $500 買進台積電，就填 500。</p>
+</li>
+<li><p><strong>持有數量</strong>：你買了幾股（或幾個單位）。</p>
+</li>
+</ul>
+<p>填完後按「<strong>新增</strong>」。</p>
+<hr>
+<h3>新增成功後的畫面</h3>
+<p>資產新增後，頁面頂部會顯示你的<strong>總持倉價值</strong>和<strong>損益概覽</strong>。</p>
+<img src="images/add-asset-result.png" width="100%" alt="新增資產後的投資組合畫面"><p><strong>接下來可以做什麼？</strong></p>
+<ul>
+<li>點選任何一筆資產，可以展開查看詳細資訊</li>
+<li>點頂部的「<strong>重新整理</strong>」圖示（循環箭頭），會自動抓取最新股價</li>
+<li>頁面頂部會即時更新「總資產估值」和「損益」</li>
+</ul>
+<hr>
+<h2>3. 雲端備份：Google Sheets 同步</h2>
+<h3>為什麼需要備份？</h3>
+<p>你的資產資料預設儲存在手機本地端。如果<strong>換了新手機</strong>或<strong>清除瀏覽器資料</strong>，資料就會消失。<br>透過 Google Sheets 同步，資料會備份到你的 Google 雲端硬碟，隨時可以還原。</p>
+<blockquote>
+<p><strong>前提</strong>：手機上需要已登入 Google 帳號（大多數手機預設都已登入）。</p>
+</blockquote>
+<hr>
+<h3>備份到雲端</h3>
+<p>點頁面右上角的「<strong>雲端上傳</strong>」圖示（向上的雲朵）：</p>
+<img src="images/sync-button.png" width="100%" alt="右上角有雲端備份按鈕"><p>第一次點選時，會跳出 <strong>Google 授權視窗</strong>，選擇你的帳號並點「<strong>允許</strong>」。<br>授權完成後，App 會自動在你的 Google 雲端硬碟建立一個試算表，並將資產資料存入。</p>
+<hr>
+<h3>常見問題：授權彈窗被封鎖</h3>
+<p>有些情況下授權視窗無法彈出：</p>
+<ul>
+<li><strong>手機 PWA 模式</strong>（已加入主畫面）：改用 Safari 或 Chrome 的<strong>普通瀏覽器分頁</strong>開啟 App，再重新點備份。</li>
+<li><strong>電腦瀏覽器</strong>：點網址列右方的「<strong>彈出視窗被封鎖</strong>」圖示，選擇「<strong>永遠允許</strong>」，再重試。</li>
+</ul>
+<hr>
+<h3>常見問題：授權失敗或不小心拒絕</h3>
+<p>不用擔心，<strong>本機資料不會消失</strong>，你的資產列表仍然完整保留。<br>稍後再點備份按鈕重試即可。如果反覆失敗，建議登出 Google 帳號後重新嘗試。</p>
+<hr>
+<h3>從雲端還原</h3>
+<p>換新手機或清除瀏覽器資料後，重新登入 App，再點「<strong>雲端下載</strong>」圖示（向下的雲朵）即可還原：</p>
+<img src="images/sync-restore.png" width="100%" alt="右上角有雲端還原按鈕"><hr>
+<h2>4. 賣出與損益記錄</h2>
+<h3>找到賣出按鈕</h3>
+<p>在資產列表中，點選任意一筆資產，展開後可以看到每筆購買記錄，以及右側的橘色「<strong>賣</strong>」按鈕：</p>
+<img src="images/sell-button.png" width="100%" alt="展開資產後顯示賣出按鈕"><hr>
+<h3>填寫賣出資料</h3>
+<img src="images/sell-form.png" width="100%" alt="賣出資產表單"><ul>
+<li><strong>賣出數量</strong>：這次要賣幾股，不超過持倉數量即可</li>
+<li><strong>賣出價格（每股）</strong>：你的實際成交價</li>
+<li><strong>賣出日期</strong>：預設為今天，也可以改成過去的日期（補登記錄）</li>
+<li><strong>手續費</strong>（選填）：如有交易手續費可填入，會影響損益計算</li>
+</ul>
+<p>填入後，下方會即時顯示<strong>預估損益</strong>，確認無誤後按「<strong>確認賣出</strong>」。</p>
+<hr>
+<h3>已平倉（完全賣出的資產）</h3>
+<p>當一筆資產的所有持股都賣出後，它會從「你的資產列表」移到下方的「<strong>已平倉</strong>」區段，方便你查看歷史交易記錄：</p>
+<img src="images/sell-closed.png" width="100%" alt="已平倉區段顯示完全賣出的部位"><p>點選已平倉的項目，可以展開查看每一筆賣出的詳細損益。</p>
+<hr>
+<h2>5. 績效分析</h2>
+<h3>開啟績效頁籤</h3>
+<p>在主畫面底部導覽列點選「<strong>績效</strong>」頁籤，即可進入投資組合績效總覽。</p>
+<h3>年化報酬率 (CAGR)</h3>
+<p>頁面頂部顯示整個投資組合的<strong>市值加權年化報酬率</strong>，以及從最早持倉日起算的<strong>持有天數</strong>。<br>未設定購買日期的資產會被排除計算，並以提示說明排除筆數。</p>
+<blockquote>
+<p>如果有資產尚未填寫購買日期，頁面會出現<strong>批次設定面板</strong>，讓你一次補齊所有日期後統一儲存。</p>
+</blockquote>
+<h3>基準比較</h3>
+<p>頁面同時顯示你的 CAGR 與以下兩個指數在同期間的表現比較：</p>
+<ul>
+<li><strong>TAIEX (^TWII)</strong>：台灣加權股價指數</li>
+<li><strong>S&amp;P 500 (SPY)</strong>：美國標普 500</li>
+</ul>
+<p>每個基準旁會標示「<strong>Beating</strong>」（贏過）或「<strong>Lagging</strong>」（落後），以及差距的百分點數。</p>
+<h3>各資產績效排行</h3>
+<p>頁面下方列出每檔資產的個別 CAGR，從最高到最低排序，同時顯示未實現損益，讓你快速找出最佳與最差表現的持倉。<br>若同一檔股票有多筆買入紀錄（分批建倉），系統會自動合併為一列，以<strong>市值加權平均</strong>呈現該檔整體 CAGR 與合計損益。</p>
+<hr>
+<h2>6. 資產配置圖表（統計頁籤）</h2>
+<h3>開啟統計頁籤</h3>
+<p>在底部導覽列點選「<strong>統計</strong>」（圓餅圖圖示），可以看到投資組合的配置比例圖表。</p>
+<h3>兩種檢視模式</h3>
+<p>頁面右上角有兩個切換按鈕：</p>
+<ul>
+<li><strong>按市場類型</strong>：整個投資組合按市場（台股 / 美股 / 加密貨幣）分成三塊，讓你一眼看出各市場占比。</li>
+<li><strong>按資產種類</strong>：每一檔個股或加密貨幣獨立顯示為一個扇形，顏色以市場區分（台股藍色、美股綠色、加密貨幣琥珀色）。</li>
+</ul>
+<p><img src="images/stats-market.png" alt="按市場類型圓環圖"></p>
+<p><img src="images/stats-asset.png" alt="按資產種類圓環圖"></p>
+<h3>圖表說明</h3>
+<ul>
+<li>圓環中央顯示<strong>投資組合總市值</strong>（以 k 為單位）</li>
+<li>圖例列在圓環下方，「按資產種類」模式會依市場分組顯示，並列出每檔資產占總資產的百分比</li>
+<li>滑鼠移到（或點按）扇形時，會彈出提示框顯示該項目的<strong>市值金額</strong></li>
+</ul>
+<hr>
+<h2>7. 資產走勢圖（趨勢頁籤）</h2>
+<h3>開啟趨勢頁籤</h3>
+<p>在底部導覽列點選「<strong>趨勢</strong>」（折線箭頭圖示），可以查看投資組合隨時間的歷史走勢。</p>
+<blockquote>
+<p><strong>注意</strong>：走勢圖需要歷史快照資料，App 每天會自動記錄一次當天的總市值。第一天使用時圖表可能只有一個點，隨著使用天數累積，曲線會越來越完整。</p>
+</blockquote>
+<h3>時間區間選擇</h3>
+<p>圖表上方有五個時間按鈕：<strong>1W</strong>（近一週）、<strong>1M</strong>（近一個月）、<strong>3M</strong>（近三個月）、<strong>1Y</strong>（近一年）、<strong>MAX</strong>（全部）。點選後圖表會自動縮放到對應區間。</p>
+<h3>顯示模式</h3>
+<p>右側有兩個切換按鈕：</p>
+<ul>
+<li><strong>總值</strong>：Y 軸顯示每日投資組合的絕對市值</li>
+<li><strong>損益%</strong>：Y 軸改為以百分比顯示相對損益，方便和基準比較</li>
+</ul>
+<p><img src="images/trend-chart.png" alt="趨勢走勢圖"></p>
+<h3>歷史記錄與備註</h3>
+<p>圖表下方列出最近 15 筆快照，每筆顯示<strong>日期</strong>、<strong>市值</strong>、以及與前一天的<strong>漲跌金額和百分比</strong>。<br>點選每筆記錄右側的「<strong>+ 新增備註</strong>」，可以替那天寫下一句備忘（例如「加倉台積電」），備註儲存後會直接顯示在該筆記錄上。</p>
+<p><img src="images/trend-history.png" alt="歷史記錄與備註"></p>
+<hr>
+<h2>8. 設定：交易所 API 同步</h2>
+<h3>開啟設定頁籤</h3>
+<p>在底部導覽列點選「<strong>設定</strong>」（格線圖示），可以管理交易所 API 金鑰。</p>
+<h3>支援的交易所</h3>
+<p>目前支援自動同步餘額的交易所：</p>
+<ul>
+<li><strong>Pionex</strong>（派網）</li>
+<li><strong>BitoPro</strong>（幣託）</li>
+</ul>
+<h3>新增 API 金鑰</h3>
+<ol>
+<li>前往交易所官網，在帳號設定中建立一組「<strong>唯讀</strong>」API 金鑰（只需讀取權限，不要開啟提款或交易權限）</li>
+<li>在 App 設定頁面，從下拉選單選擇交易所名稱</li>
+<li>依序填入「<strong>API Key</strong>」和「<strong>API Secret</strong>」</li>
+<li>點「<strong>新增交易所</strong>」</li>
+</ol>
+<h3>同步餘額</h3>
+<p>新增完成後，交易所卡片會顯示在頁面上，包含上次同步時間和交易所總市值。<br>點卡片右側的「<strong>重新整理</strong>」按鈕（循環箭頭），即可手動觸發一次餘額同步，把最新持倉自動帶入資產列表。</p>
+<h3>刪除 API 金鑰</h3>
+<p>點卡片右側的「<strong>垃圾桶</strong>」圖示，確認後即可移除該交易所設定。刪除後該交易所同步的資產不會自動消失，需要手動從資產列表刪除。</p>
+<p><img src="images/settings-view.png" alt="設定：交易所 API 管理"></p>
+<hr>
+<h2>常見問題</h2>
+<p><strong>Q：忘記成本價怎麼辦？</strong><br>A：點資產右側的「<strong>鉛筆</strong>」編輯圖示，可以修改成本價和持倉數量。</p>
+<p><strong>Q：價格沒有更新？</strong><br>A：點頁面右上角的循環箭頭「<strong>重新整理</strong>」按鈕，會重新抓取所有資產的最新市價。股票代號打錯的話，抓不到價格，請確認代號是否正確（台積電是 <strong>2330</strong>，不是 2330.TW）。</p>
+<p><strong>Q：換手機後怎麼把資料搬過去？</strong><br>A：在舊手機上先做一次「備份到雲端」，換到新手機後，登入同一個 Google 帳號，再點「從雲端還原」即可。</p>
+<p><strong>Q：不想讓旁邊的人看到我的資產金額？</strong><br>A：點頁面右上角的「<strong>眼睛</strong>」圖示，所有金額會立刻變成 <code>****</code>。再點一次即可恢復顯示。這個設定會在關掉 App 後保留，重新開啟時仍會維持隱藏狀態。</p>
+<p><strong>Q：統計圖表是即時更新的嗎？</strong><br>A：統計（配置圖）是即時的，每次切換到統計頁籤都會用最新市價計算。趨勢圖則是每天記錄一次快照，不會在同一天內變動。</p>
+<p><strong>Q：交易所同步和手動新增可以同時使用嗎？</strong><br>A：可以。交易所同步回來的資產和你手動新增的資產會一起出現在資產列表中，互不干擾。</p>
+<hr>
+<p><em>AssetTracker v0.5.2 · 最後更新：2026-04-27</em></p>
+
+    </div>
+  </div>
+  <script>
+    // Add ids to headings for anchor links
+    document.querySelectorAll('h2,h3').forEach(function(h) {
+      if (!h.id) {
+        h.id = h.textContent.trim().toLowerCase()
+          .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '');
+      }
+    });
+
+    var input = document.getElementById('guide-search');
+    var guideBody = document.getElementById('guide-body');
+    var originalHTML = guideBody.innerHTML;
+
+    function highlight(text, q) {
+      var lower = text.toLowerCase();
+      var lq = q.toLowerCase();
+      var out = '', i = 0;
+      while (i < text.length) {
+        var j = lower.indexOf(lq, i);
+        if (j === -1) { out += text.slice(i); break; }
+        out += text.slice(i, j) + '<mark>' + text.slice(j, j + q.length) + '</mark>';
+        i = j + q.length;
+      }
+      return out;
+    }
+
+    input.addEventListener('input', function() {
+      var q = input.value.trim();
+      if (!q) { guideBody.innerHTML = originalHTML; return; }
+      var parts = originalHTML.split(/(<[^>]+>)/g);
+      guideBody.innerHTML = parts.map(function(p) {
+        return p.startsWith('<') ? p : highlight(p, q);
+      }).join('');
+      var first = guideBody.querySelector('mark');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+</script>
+</body>
+</html>
