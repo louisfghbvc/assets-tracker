@@ -1,5 +1,21 @@
 # TODOS
 
+## App.tsx — Interactive onboarding tour (step-by-step walkthrough)
+
+**What:** A tooltip-based step-by-step walkthrough that guides first-time users through the key UI elements: add-asset button, market selector, stats tab, trend tab, settings.
+
+**Why:** The welcome banner + user guide cover "where to find help", but an in-app tour removes the need to leave the app at all. Especially useful on mobile where context-switching to a guide page interrupts flow.
+
+**Pros:** Zero external navigation; inline contextual help at the moment of need; can reuse `HelpCircle` icon + existing `data-testid` attributes as anchors.
+
+**Cons:** ~2-3 days of UI work to build the tooltip/overlay system; must handle scroll, tab switching, and responsive layouts. Save for v1.0 when user base is established.
+
+**Context:** Deferred from v0.5.2 user guide onboarding plan (2026-04-27). The static guide + welcome banner are the v0.5.2 solution. This is the v1.0 follow-up.
+
+**Depends on / blocked by:** v0.5.2 user guide must ship first (provides the content to link from the tour).
+
+---
+
 ## sync.ts — Replace substring header matching with exact alias matching
 
 **What:** Replace `cell.includes('purchase')`, `cell.includes('updated')`, etc. in `parsePortfolioRows()` with an exact alias set. Example: `const PURCHASE_DATE_HEADERS = new Set(['purchasedate', 'purchase_date', 'purchasedatems'])`.

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2] - 2026-04-27
+
+### Added
+- **In-app User Guide**: A full bilingual (ZH/EN) guide is now bundled at `/guide/` and built automatically during `npm run dev` / `npm run build`. The guide covers installation, adding assets, cloud sync, sell records, performance analysis, stats charts, trend chart, and exchange API setup — with annotated screenshots for each section.
+- **Welcome banner**: First-time users see a dismissible banner linking directly to the guide. Banner is shown until explicitly dismissed (persisted in `localStorage`).
+- **Guide link in Settings tab**: A "User Guide" button in the Settings tab lets users re-open the guide at any time.
+- **Empty-state guide hint**: When the asset list is empty, a hint below the "no assets" message links to the guide.
+- **Screenshot automation**: `scripts/take-screenshots.mjs` now covers all 5 guide sections — Stats (By Market + By Asset), Trend (chart + history), and Settings (exchange config) — in addition to the existing install / add-asset / sell flows.
+
+### Fixed
+- **First-open refresh gate**: `hasInitialRefreshed` was only set inside the `assetCount > 0` guard, so new users with zero assets never triggered post-load logic that depends on it. Now set unconditionally after the DB count check.
+- **i18n coverage**: Banner greeting, guide link, and empty-state hint were using inline `language === 'zh' ? ... : ...` ternaries instead of the `t()` helper. All three now use proper translation keys (`guideBannerWelcome`, `guideBannerLink`, `guideHint`, `userGuide`).
+- **PWA safety in `openGuide`**: The previous implementation fell back to `window.location.href = './guide/'` when `window.open` returned null — which happens by design with `noopener`. This destroyed PWA state. Fixed: pass `noopener,noreferrer` and remove the destructive fallback.
+- **Screenshot script wrong IndexedDB stores**: The trend history seeder used `portfolioHistory` (wrong) instead of `history`, and `totalValueTWD` instead of `totalValue`. The settings seeder used `localStorage` instead of IndexedDB `exchangeConfigs`. Both are now correct.
+- **Magic string duplication**: `'guide_banner_dismissed'` appeared in two places in `App.tsx`. Extracted to a module-scope `GUIDE_BANNER_KEY` constant.
+
 ## [0.5.1] - 2026-04-27
 
 ### Added

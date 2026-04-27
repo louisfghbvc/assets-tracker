@@ -14,6 +14,7 @@ import {
   GanttChartSquare,
   Eye,
   EyeOff,
+  HelpCircle,
   Pencil,
   BarChart2
 } from "lucide-react";
@@ -25,6 +26,8 @@ import {
   Tooltip
 } from 'recharts';
 import "./App.css";
+
+const GUIDE_BANNER_KEY = 'guide_banner_dismissed';
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type Asset, type SellRecord } from "./db/database";
@@ -122,6 +125,10 @@ function App() {
   const [hideValues, setHideValues] = useState<boolean>(() => {
     return localStorage.getItem("hideValues") === "true";
   });
+  const [guideBannerDismissed, setGuideBannerDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem(GUIDE_BANNER_KEY) === "true"; }
+    catch { return false; }
+  });
   const [hasInitialRefreshed, setHasInitialRefreshed] = useState(false);
   const [trendMode, setTrendMode] = useState<'value' | 'percent'>('value');
   const [trendRange, setTrendRange] = useState<'1W' | '1M' | '3M' | '1Y' | 'MAX'>('MAX');
@@ -147,6 +154,10 @@ function App() {
       return `${prefix}${(value / 1000).toFixed(1)}k`;
     }
     return `${prefix}${value.toFixed(1)}`;
+  };
+
+  const openGuide = () => {
+    window.open('./guide/', '_blank', 'noopener,noreferrer');
   };
 
   const [language, setLanguage] = useState<Language>((localStorage.getItem("app_language") as Language) || 'zh');
@@ -186,9 +197,9 @@ function App() {
         const assetCount = await db.assets.count();
         if (assetCount > 0) {
           initialRefreshStarted.current = true;
-          setHasInitialRefreshed(true);
           handleRefresh();
         }
+        setHasInitialRefreshed(true);
       }
     };
     checkAndRefresh();
@@ -643,6 +654,9 @@ function App() {
             <button className="action-btn" onClick={handleRefresh} data-hint={t('refreshPrices')}>
               <RefreshCw size={24} className={isRefreshing ? "spin" : ""} />
             </button>
+            <button className="action-btn" onClick={openGuide} data-hint={t('userGuide')} data-testid="guide-btn">
+              <HelpCircle size={24} />
+            </button>
             {userProfile ? (
               <div
                 className={`user-profile-badge ${isLoggingOut ? 'confirm-mode' : ''}`}
@@ -708,6 +722,30 @@ function App() {
           )}
         </div>
       </header >
+
+      {/* First-time user banner — shows only on empty portfolio, dismissed with ✕ */}
+      {!guideBannerDismissed && (mergedAssets?.length ?? 0) === 0 && hasInitialRefreshed && (
+        <div data-testid="guide-banner" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)',
+          borderRadius: '12px', padding: '0.75rem 1rem', margin: '0.75rem 0',
+          fontSize: '0.875rem', color: 'var(--text-secondary)',
+        }}>
+          <span>👋 {t('guideBannerWelcome')}&nbsp;
+            <button onClick={openGuide} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
+              {t('guideBannerLink')}
+            </button>
+          </span>
+          <button
+            onClick={() => {
+              setGuideBannerDismissed(true);
+              try { localStorage.setItem(GUIDE_BANNER_KEY, 'true'); } catch { /* private browsing */ }
+            }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0 0 0 0.5rem' }}
+            aria-label="dismiss"
+          >✕</button>
+        </div>
+      )}
 
       {/* Conditional Rendering based on Tab */}
       {
@@ -944,6 +982,11 @@ function App() {
                 {assets?.length === 0 && (
                   <div className="empty-state" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                     <p>{t('noAssets')}</p>
+                    <p style={{ marginTop: '8px', fontSize: '0.8rem' }}>
+                      <button onClick={openGuide} data-testid="guide-hint" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 'inherit', padding: 0, textDecoration: 'underline' }}>
+                        {t('guideHint')}
+                      </button>
+                    </p>
                   </div>
                 )}
               </div>
@@ -998,6 +1041,16 @@ function App() {
       {
         activeTab === 'settings' && (
           <section className="settings-view animate-fade-in">
+            <div className="card settings-container" style={{ marginBottom: '1rem' }}>
+              <button onClick={openGuide} data-testid="settings-guide-link" style={{
+                display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                background: 'none', border: '1px solid var(--glass-border)', borderRadius: '10px',
+                padding: '0.75rem 1rem', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.9rem',
+              }}>
+                <HelpCircle size={18} />
+                {t('userGuide')}
+              </button>
+            </div>
             <div className="card settings-container">
               <h2 className="view-title">{t('exchanges')}</h2>
               <div className="exchange-list">

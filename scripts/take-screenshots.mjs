@@ -274,7 +274,172 @@ async function main() {
     await shot(page, 'sell-closed.png');
   }
 
-  await ctx.close();
+  // ─── CONTEXT 3: Stats tab ────────────────────────────────────────────────
+  const statsCtx = await browser.newContext({ viewport: MOBILE, deviceScaleFactor: 2, isMobile: true });
+  const statsPage = await statsCtx.newPage();
+  await injectFakeAuth(statsPage);
+
+  await statsPage.goto(BASE);
+  await statsPage.waitForLoadState('networkidle');
+  await delay(500);
+  await seedDatabase(statsPage);
+  await statsPage.reload();
+  await statsPage.waitForLoadState('networkidle');
+  await delay(1200);
+
+  // Navigate to Stats tab
+  const statsTab = await statsPage.$('[data-testid="tab-stats"]');
+  if (statsTab) {
+    await statsTab.click();
+  } else {
+    // Fallback: click tab by text
+    await statsPage.getByText('統計').first().click();
+  }
+  await delay(1000);
+
+  // stats-market.png — By Market view (default)
+  await shot(statsPage, 'stats-market.png');
+
+  // Switch to By Asset view
+  const byAssetBtn = await statsPage.$('[data-testid="by-asset-btn"]');
+  if (byAssetBtn) {
+    await byAssetBtn.click();
+  } else {
+    await statsPage.getByText('按資產').first().click().catch(() =>
+      statsPage.getByText('By Asset').first().click()
+    );
+  }
+  await delay(800);
+
+  // stats-asset.png — By Asset view
+  await shot(statsPage, 'stats-asset.png');
+
+  await statsCtx.close();
+
+  // ─── CONTEXT 4: Trend tab ─────────────────────────────────────────────────
+  const trendCtx = await browser.newContext({ viewport: MOBILE, deviceScaleFactor: 2, isMobile: true });
+  const trendPage = await trendCtx.newPage();
+  await injectFakeAuth(trendPage);
+
+  await trendPage.goto(BASE);
+  await trendPage.waitForLoadState('networkidle');
+  await delay(500);
+  await seedDatabase(trendPage);
+
+  // Seed some trend history snapshots
+  await trendPage.evaluate(async () => {
+    const openDB = () => new Promise((resolve, reject) => {
+      const req = indexedDB.open('AssetTrackerDB');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const db = await openDB();
+
+    const putSnapshot = (snap) => new Promise((resolve, reject) => {
+      const tx = db.transaction('history', 'readwrite');
+      const store = tx.objectStore('history');
+      const req = store.put(snap);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const baseValue = 1200000;
+
+    for (let i = 14; i >= 0; i--) {
+      const date = new Date(now - i * day);
+      const dateStr = date.toISOString().split('T')[0];
+      const variation = (Math.random() - 0.45) * 30000;
+      await putSnapshot({
+        date: dateStr,
+        totalValue: baseValue + (14 - i) * 8000 + variation,
+        currency: 'TWD',
+        note: i === 3 ? '加倉台積電' : '',
+      });
+    }
+
+    db.close();
+  });
+
+  await trendPage.reload();
+  await trendPage.waitForLoadState('networkidle');
+  await delay(1200);
+
+  // Navigate to Trend tab
+  const trendTab = await trendPage.$('[data-testid="tab-trend"]');
+  if (trendTab) {
+    await trendTab.click();
+  } else {
+    await trendPage.getByText('趨勢').first().click();
+  }
+  await delay(1200);
+
+  // trend-chart.png — chart with range selector visible
+  await shot(trendPage, 'trend-chart.png');
+
+  // Scroll down to show history list
+  await trendPage.evaluate(() => window.scrollTo(0, 600));
+  await delay(600);
+
+  // trend-history.png — history list with note visible
+  await shot(trendPage, 'trend-history.png');
+
+  await trendCtx.close();
+
+  // ─── CONTEXT 5: Settings tab ──────────────────────────────────────────────
+  const settingsCtx = await browser.newContext({ viewport: MOBILE, deviceScaleFactor: 2, isMobile: true });
+  const settingsPage = await settingsCtx.newPage();
+  await injectFakeAuth(settingsPage);
+
+  // No addInitScript needed — exchange configs are seeded via IndexedDB after page load
+
+  await settingsPage.goto(BASE);
+  await settingsPage.waitForLoadState('networkidle');
+  await delay(500);
+  await seedDatabase(settingsPage);
+
+  // Seed exchange config into IndexedDB (exchangeConfigs store)
+  await settingsPage.evaluate(async () => {
+    const openDB = () => new Promise((resolve, reject) => {
+      const req = indexedDB.open('AssetTrackerDB');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('exchangeConfigs', 'readwrite');
+      const store = tx.objectStore('exchangeConfigs');
+      const req = store.add({
+        exchangeName: 'pionex',
+        apiKey: 'pk_xxxxxxxxxxxxxxxx',
+        apiSecret: 'sk_xxxxxxxxxxxxxxxx',
+        lastSynced: Date.now() - 2 * 60 * 60 * 1000,
+      });
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+  });
+
+  await settingsPage.reload();
+  await settingsPage.waitForLoadState('networkidle');
+  await delay(1200);
+
+  // Navigate to Settings tab
+  const settingsTab = await settingsPage.$('[data-testid="tab-settings"]');
+  if (settingsTab) {
+    await settingsTab.click();
+  } else {
+    await settingsPage.getByText('設定').first().click();
+  }
+  await delay(800);
+
+  // settings-view.png — Settings tab showing exchange config
+  await shot(settingsPage, 'settings-view.png', { fullPage: true });
+
+  await settingsCtx.close();
+
   await browser.close();
 
   console.log('\n✅ Automated screenshots done.');
