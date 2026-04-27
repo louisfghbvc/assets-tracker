@@ -1130,12 +1130,14 @@ function App() {
                 <h2 className="view-title">{t('allocation')}</h2>
                 <div className="stats-toggle">
                   <button
+                    data-testid="by-market-btn"
                     className={`toggle-btn ${statsView === 'market' ? 'active' : ''}`}
                     onClick={() => setStatsView('market')}
                   >
                     {t('byMarket')}
                   </button>
                   <button
+                    data-testid="by-asset-btn"
                     className={`toggle-btn ${statsView === 'asset' ? 'active' : ''}`}
                     onClick={() => setStatsView('asset')}
                   >
@@ -1383,23 +1385,23 @@ function App() {
 
       {/* Tab Bar (for Mobile) */}
       <nav className="tab-bar">
-        <div className={`tab-item ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>
+        <div data-testid="tab-assets" className={`tab-item ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>
           <Wallet size={24} />
           <span>{t('assets')}</span>
         </div>
-        <div className={`tab-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
+        <div data-testid="tab-stats" className={`tab-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           <PieChart size={24} />
           <span>{t('stats')}</span>
         </div>
-        <div className={`tab-item ${activeTab === 'trend' ? 'active' : ''}`} onClick={() => setActiveTab('trend')}>
+        <div data-testid="tab-trend" className={`tab-item ${activeTab === 'trend' ? 'active' : ''}`} onClick={() => setActiveTab('trend')}>
           <TrendingUp size={24} />
           <span>{t('trend')}</span>
         </div>
-        <div className={`tab-item ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')}>
+        <div data-testid="tab-performance" className={`tab-item ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')}>
           <BarChart2 size={24} />
           <span>{t('performance')}</span>
         </div>
-        <div className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+        <div data-testid="tab-settings" className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
           <GanttChartSquare size={24} />
           <span>{t('settings')}</span>
         </div>
