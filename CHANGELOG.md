@@ -2,7 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.1] - 2026-04-26
+## [0.5.1] - 2026-04-27
+
+### Added
+- **Stats tab — By Asset pie chart**: New "By Asset" view in the Stats tab shows each individual holding as its own slice, colored by market (blue for 台股, green for 美股, amber for 加密貨幣). The legend groups assets under a market header and shows each slice's percentage of total portfolio value.
 
 ### Fixed
 - **Asset Performance Ranking now groups by symbol+market** — previously showed one row per buy transaction; now shows one row per asset with market-value-weighted CAGR and summed P&L across all lots. Resolves duplicate rows for multi-lot positions.
