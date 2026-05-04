@@ -1,3 +1,5 @@
+import { fetchViaProxy } from './proxy';
+
 export interface PriceResult {
     symbol: string;
     price: number;
@@ -48,32 +50,6 @@ export const priceService = {
     },
 
     async fetchPricesWeb(symbols: string[]): Promise<PriceResult[]> {
-        // Check for Cloudflare Worker proxy URL
-        const workerProxyUrl = import.meta.env.VITE_CORS_PROXY_URL;
-
-        // Helper function to fetch via Cloudflare Worker
-        const fetchViaWorker = async (url: string, timeoutMs = 5000): Promise<Response | null> => {
-            if (!workerProxyUrl) return null;
-
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-                const response = await fetch(workerProxyUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url }),
-                    signal: controller.signal,
-                });
-
-                clearTimeout(timeout);
-                return response.ok ? response : null;
-            } catch (error) {
-                console.warn('⚠️ Worker proxy failed, falling back to free proxies');
-                return null;
-            }
-        };
-
         // Helper function to fetch with timeout (for fallback proxies)
         const fetchWithTimeout = async (url: string, timeoutMs = 5000): Promise<Response> => {
             const controller = new AbortController();
@@ -116,7 +92,7 @@ export const priceService = {
                 : `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d&_=${timestamp}`;
 
             // Try Cloudflare Worker first
-            const workerResponse = await fetchViaWorker(targetUrl);
+            const workerResponse = await fetchViaProxy(targetUrl);
             if (workerResponse) {
                 try {
                     const text = await workerResponse.text();
@@ -222,7 +198,7 @@ export const priceService = {
                 const otcUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${code}.tw&json=1&_=${timestamp}`;
 
                 // Try Cloudflare Worker first for OTC
-                const workerOtcRes = await fetchViaWorker(otcUrl);
+                const workerOtcRes = await fetchViaProxy(otcUrl);
                 if (workerOtcRes) {
                     try {
                         const text = await workerOtcRes.text();
@@ -321,47 +297,38 @@ export const priceService = {
             }
         };
 
-        const workerProxyUrl = import.meta.env.VITE_CORS_PROXY_URL;
-
         // Try Cloudflare Worker first
-        if (workerProxyUrl) {
+        const workerResponse = await fetchViaProxy(targetUrl);
+        if (workerResponse) {
             try {
-                const response = await fetch(workerProxyUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: targetUrl }),
-                });
+                const json = await workerResponse.json();
+                const result = json.chart?.result?.[0];
+                if (result) {
+                    const ts = result.timestamp;
+                    const indicators = result.indicators.quote[0];
+                    const history: CandleData[] = [];
 
-                if (response.ok) {
-                    const json = await response.json();
-                    const result = json.chart?.result?.[0];
-                    if (result) {
-                        const ts = result.timestamp;
-                        const indicators = result.indicators.quote[0];
-                        const history: CandleData[] = [];
-
-                        if (ts) {
-                            for (let j = 0; j < ts.length; j++) {
-                                if (indicators.open?.[j]) {
-                                    history.push({
-                                        time: ts[j],
-                                        open: indicators.open[j],
-                                        high: indicators.high[j],
-                                        low: indicators.low[j],
-                                        close: indicators.close[j],
-                                        volume: indicators.volume[j]
-                                    });
-                                }
+                    if (ts) {
+                        for (let j = 0; j < ts.length; j++) {
+                            if (indicators.open?.[j]) {
+                                history.push({
+                                    time: ts[j],
+                                    open: indicators.open[j],
+                                    high: indicators.high[j],
+                                    low: indicators.low[j],
+                                    close: indicators.close[j],
+                                    volume: indicators.volume[j]
+                                });
                             }
-                            if (history.length > 0) {
-                                console.log(`✓ History for ${symbol} fetched via worker`);
-                                return history;
-                            }
+                        }
+                        if (history.length > 0) {
+                            console.log(`✓ History for ${symbol} fetched via worker`);
+                            return history;
                         }
                     }
                 }
-            } catch (error) {
-                console.warn('⚠️ Worker proxy failed for history, falling back to free proxies');
+            } catch {
+                // fall through to fallback proxies
             }
         }
 
@@ -431,7 +398,6 @@ export const priceService = {
             if (cached) return cached;
         }
 
-        const workerProxyUrl = import.meta.env.VITE_CORS_PROXY_URL;
         const fallbackProxies = [
             "https://api.codetabs.com/v1/proxy?quest=",
             "https://api.allorigins.win/raw?url=",
@@ -445,17 +411,11 @@ export const priceService = {
         const currentUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`;
 
         const fetchJson = async (url: string): Promise<any> => {
-            if (workerProxyUrl) {
+            const workerRes = await fetchViaProxy(url);
+            if (workerRes) {
                 try {
-                    const res = await fetch(workerProxyUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url }),
-                    });
-                    if (res.ok) {
-                        const text = await res.text();
-                        try { return JSON.parse(text); } catch { /* fall through */ }
-                    }
+                    const text = await workerRes.text();
+                    try { return JSON.parse(text); } catch { /* fall through */ }
                 } catch { /* fall through */ }
             }
             for (const proxy of fallbackProxies) {

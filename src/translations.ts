@@ -166,6 +166,12 @@ export const translations = {
         assetColumn: "Asset",
         shortHoldingWarning: "Holding < 30 days — figure may be extreme",
         cagrMethodologyNote: "Weighted average of per-asset annualized returns. Each asset uses its own holding period — not a single-period total return.",
+        news: "News",
+        noRecentNews: "No recent news",
+        newsUnavailable: "News unavailable",
+        newsProxyRequired: "News requires a CORS proxy. Set VITE_CORS_PROXY_URL in your .env — see README.",
+        newsAddAssets: "Add assets to see news",
+        newsTopByValue: "Top 10 holdings by market value",
     },
     zh: {
         loginTitle: "AssetTracker",
@@ -332,5 +338,11 @@ export const translations = {
         assetColumn: "資產",
         shortHoldingWarning: "持有不足 30 天 — 數值可能偏高",
         cagrMethodologyNote: "各資產年化報酬率的加權平均。每項資產使用自身持有期間計算，非單一期間總報酬。",
+        news: "新聞",
+        noRecentNews: "暫無最新消息",
+        newsUnavailable: "新聞無法載入",
+        newsProxyRequired: "新聞功能需要 CORS Proxy。請在 .env 設定 VITE_CORS_PROXY_URL — 詳見 README。",
+        newsAddAssets: "新增資產以查看新聞",
+        newsTopByValue: "市值前十大持倉",
     }
 };

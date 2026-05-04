@@ -44,6 +44,39 @@
 
 **Depends on / blocked by:** 無，可獨立出貨。
 
+## news.ts — Inline news on asset cards
+
+**What:** Show the latest news headline per symbol directly in the asset list row. Tapping/hovering triggers a popover with 3 headlines. Eliminates the need to switch to the News tab just to check news for one specific holding.
+
+**Why:** The News tab groups all holdings together. When you want context on a single position that just moved, clicking into that asset's card is the natural action — not navigating to a separate tab.
+
+**Pros:** Higher contextual relevance; zero new data fetching (reuses newsService from the News tab); fast perceived response from cache.
+
+**Cons:** UI work for popover positioning (must handle overflow, mobile, and scroll); adds complexity to the asset card component which is already fairly dense.
+
+**Context:** Deferred from the News tab plan (2026-05-05). The News tab is the v0.6.x solution. This is the logical next iteration.
+
+**Depends on / blocked by:** News tab (news.ts + NewsTab.tsx) must ship first.
+
+---
+
+## news.ts — RSS fallback if Yahoo Finance search endpoint breaks
+
+**What:** If `query1.finance.yahoo.com/v1/finance/search` returns 403 or drifts its response shape consistently, switch to Google News RSS per symbol as a fallback data source.
+
+**Why:** Yahoo Finance search is an unofficial endpoint with no SLA. It has historically been rate-limited or shape-changed without notice. A silent fallback prevents the entire News tab going dark without user-visible explanation.
+
+**Pros:** Resilience. Google News RSS (`news.google.com/rss/search?q=NVDA+stock`) is stable, has real news, and requires only an XML parser. No API key needed.
+
+**Cons:** Adds an XML parsing code path (DOMParser). TW symbols need company name lookup for meaningful Google News results (2330.TW → search for company name, not the ticker). Medium complexity.
+
+**Context:** Flagged during the News tab CEO review (2026-05-05). The inline shape guard `Array.isArray(data?.news)` is the current mitigation. This is the principled fallback.
+
+**Effort estimate:** S (CC ~15 min once triggered) | **Priority:** P3
+**Depends on / blocked by:** News tab must ship first. Trigger this TODO if error logging shows repeated Yahoo Finance failures.
+
+---
+
 ## performance.ts — Include realized gains (SellRecords) in portfolio annualized return
 
 **What:** Extend `portfolioAnnualizedReturn()` to include closed positions (fully sold assets). Use `SellRecord.purchaseDateSnapshot`, `SellRecord.holdingDays`, and `SellRecord.realizedGain` to compute a time-weighted return that covers both open and closed positions.
