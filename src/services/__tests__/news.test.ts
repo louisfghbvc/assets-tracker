@@ -71,11 +71,17 @@ describe('fetchNews', () => {
         expect(mockFetchViaProxy).toHaveBeenCalledWith(expect.stringContaining('q=NVDA'));
     });
 
-    it('Crypto BTC-USD — queries BTC (strips suffix)', async () => {
+    it('Crypto BTC-USD — queries BTC (strips fiat suffix)', async () => {
         mockFetchViaProxy.mockResolvedValue(makeResponse({ news: [] }));
         await fetchNews('BTC-USD');
         expect(mockFetchViaProxy).toHaveBeenCalledWith(expect.stringContaining('q=BTC'));
         expect(mockFetchViaProxy).toHaveBeenCalledWith(expect.not.stringContaining('BTC-USD'));
+    });
+
+    it('BRK-A — queries BRK-A as-is (non-fiat suffix)', async () => {
+        mockFetchViaProxy.mockResolvedValue(makeResponse({ news: [] }));
+        await fetchNews('BRK-A');
+        expect(mockFetchViaProxy).toHaveBeenCalledWith(expect.stringContaining('q=BRK-A'));
     });
 
     it('proxy returns null — returns []', async () => {

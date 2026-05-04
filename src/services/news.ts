@@ -19,9 +19,13 @@ const BATCH_SIZE = 3;
 
 const newsCache = new Map<string, CacheEntry>();
 
+const CRYPTO_FIAT_SUFFIXES = new Set(['USD', 'EUR', 'GBP', 'USDT', 'USDC', 'BTC', 'ETH']);
+
 function normalizeSymbol(symbol: string): string {
-    // Crypto: BTC-USD → BTC; TW/US symbols pass through as-is
-    if (symbol.includes('-')) return symbol.split('-')[0];
+    const dashIdx = symbol.indexOf('-');
+    if (dashIdx === -1) return symbol;
+    const suffix = symbol.slice(dashIdx + 1).toUpperCase();
+    if (CRYPTO_FIAT_SUFFIXES.has(suffix)) return symbol.slice(0, dashIdx);
     return symbol;
 }
 

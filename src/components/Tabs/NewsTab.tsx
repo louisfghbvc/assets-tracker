@@ -12,8 +12,7 @@ interface NewsTabProps {
 
 type SymbolState =
     | { status: 'loading' }
-    | { status: 'success'; items: NewsItem[] }
-    | { status: 'error' };
+    | { status: 'success'; items: NewsItem[] };
 
 const MAX_SYMBOLS = 10;
 
@@ -136,14 +135,6 @@ export function NewsTab({ assets, exchangeRate, language }: NewsTabProps) {
                     const state = newsState.get(symbol);
                     if (!state || state.status === 'loading') {
                         return <SkeletonCard key={symbol} />;
-                    }
-                    if (state.status === 'error') {
-                        return (
-                            <div key={symbol} className="news-card news-card--error">
-                                <div className="news-symbol-header">{symbol}</div>
-                                <p className="news-unavailable">{t.newsUnavailable}</p>
-                            </div>
-                        );
                     }
                     return (
                         <div key={symbol} className="news-card">
