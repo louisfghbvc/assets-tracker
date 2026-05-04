@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-05-05
+
+### Added
+- **News tab**: New tab shows the latest headlines per symbol for your top 10 holdings by portfolio value. Cards display article title, publisher, and time-ago for each item (e.g. "2h ago"). Requires `VITE_CORS_PROXY_URL` to be set — shows a clear notice if not configured.
+- **Shared CORS proxy utility** (`proxy.ts`): Extracted the Cloudflare Worker fetch pattern from `price.ts` into a reusable module used by both price fetching and the new news service.
+- **Mobile-friendly tab bar**: Tab labels are hidden on screens ≤480px so all six tabs fit comfortably as icon-only buttons.
+- **22 new tests**: `proxy.test.ts` (5 tests covering all proxy paths) and `news.test.ts` (17 tests covering cache, TTL, normalisation, and error handling).
+
+### Fixed
+- **News items with missing publish time no longer show "20389d ago"**: Items where `providerPublishTime` is absent or zero are now filtered out before display.
+- **Stable React keys for news items**: News items now use `item.link` as the React key instead of array index, preventing stale-UI issues on re-sort.
+- **BRK-A symbol lookup**: `normalizeSymbol` previously stripped everything after `-`, turning `BRK-A` into `BRK`. It now only strips the suffix when it matches a known crypto fiat code (USD, EUR, GBP, USDT, USDC, BTC, ETH).
+
 ## [0.5.2] - 2026-04-27
 
 ### Added
