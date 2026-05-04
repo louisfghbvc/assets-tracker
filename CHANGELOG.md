@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 - **News tab**: New tab shows the latest headlines per symbol for your top 10 holdings by portfolio value. Cards display article title, publisher, and time-ago for each item (e.g. "2h ago"). Requires `VITE_CORS_PROXY_URL` to be set — shows a clear notice if not configured.
 - **Shared CORS proxy utility** (`proxy.ts`): Extracted the Cloudflare Worker fetch pattern from `price.ts` into a reusable module used by both price fetching and the new news service.
 - **Mobile-friendly tab bar**: Tab labels are hidden on screens ≤480px so all six tabs fit comfortably as icon-only buttons.
-- **22 new tests**: `proxy.test.ts` (5 tests covering all proxy paths) and `news.test.ts` (17 tests covering cache, TTL, normalisation, and error handling).
+- **23 new tests**: `proxy.test.ts` (5 tests covering all proxy paths) and `news.test.ts` (18 tests covering cache, TTL, normalisation, and error handling).
 
 ### Fixed
 - **News items with missing publish time no longer show "20389d ago"**: Items where `providerPublishTime` is absent or zero are now filtered out before display.

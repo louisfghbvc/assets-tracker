@@ -7,11 +7,13 @@ This guide explains how to deploy your own Cloudflare Worker proxy for AssetTrac
 Without your own worker proxy:
 - ❌ Price fetching success rate: ~85-95%
 - ❌ Exchange APIs (Pionex/BitoPro) don't work on web
+- ❌ News tab doesn't work (financial headlines require the proxy)
 - ❌ Dependent on unreliable free proxies
 
 With your own worker proxy:
 - ✅ Price fetching success rate: 100%
 - ✅ Exchange APIs work perfectly on web
+- ✅ News tab works — latest headlines for your top 10 holdings
 - ✅ Free (Cloudflare's generous free tier)
 - ✅ Fast (global CDN)
 
