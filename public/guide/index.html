@@ -111,6 +111,7 @@
 <li><a href="#6-%E8%B3%87%E7%94%A2%E9%85%8D%E7%BD%AE%E5%9C%96%E8%A1%A8%E7%B5%B1%E8%A8%88%E9%A0%81%E7%B1%A4">資產配置圖表（統計頁籤）</a></li>
 <li><a href="#7-%E8%B3%87%E7%94%A2%E8%B5%B0%E5%8B%A2%E5%9C%96%E8%B6%A8%E5%8B%A2%E9%A0%81%E7%B1%A4">資產走勢圖（趨勢頁籤）</a></li>
 <li><a href="#8-%E8%A8%AD%E5%AE%9A%E4%BA%A4%E6%98%93%E6%89%80-api-%E5%90%8C%E6%AD%A5">設定：交易所 API 同步</a></li>
+<li><a href="#9-%E6%9C%80%E6%96%B0%E8%B2%A1%E7%B6%93%E6%96%B0%E8%81%9E%E6%96%B0%E8%81%9E%E9%A0%81%E7%B1%A4">最新財經新聞（新聞頁籤）</a></li>
 </ol>
 <hr>
 <h2>1. 安裝與開始使用</h2>
@@ -295,6 +296,31 @@
 <p>點卡片右側的「<strong>垃圾桶</strong>」圖示，確認後即可移除該交易所設定。刪除後該交易所同步的資產不會自動消失，需要手動從資產列表刪除。</p>
 <p><img src="images/settings-view.png" alt="設定：交易所 API 管理"></p>
 <hr>
+<h2>9. 最新財經新聞（新聞頁籤）</h2>
+<h3>功能說明</h3>
+<p>「新聞」頁籤會自動顯示你持股<strong>市值前 10 大標的</strong>的最新財經新聞。每張卡片顯示：</p>
+<ul>
+<li><strong>標的代號</strong>（例：NVDA、2330.TW）</li>
+<li><strong>文章標題</strong>（可點選開啟原始報導）</li>
+<li><strong>來源媒體</strong>（例：Reuters、Bloomberg）</li>
+<li><strong>發布時間</strong>（例：2h ago、3d ago）</li>
+</ul>
+<hr>
+<h3>前提條件</h3>
+<blockquote>
+<p><strong>重要</strong>：新聞功能需要設定 <strong>Cloudflare Worker 代理</strong>（<code>VITE_CORS_PROXY_URL</code>）才能使用。<br>若尚未設定，頁籤會顯示設定說明的提示訊息。<br>設定方式請參考 <a href="./cloudflare-worker-setup.md">docs/cloudflare-worker-setup.md</a>。</p>
+</blockquote>
+<hr>
+<h3>使用方式</h3>
+<ol>
+<li>點選頁面底部的「<strong>新聞</strong>」頁籤（報紙圖示）。</li>
+<li>App 會自動依持倉市值由高至低，載入前 10 檔標的的最新新聞。</li>
+<li>點選任一文章標題，即可在瀏覽器新分頁開啟原始報導。</li>
+</ol>
+<blockquote>
+<p><strong>提示</strong>：新聞資料快取 15 分鐘。切換頁面後回來，或重新整理市價後，快取會自動刷新。加密貨幣代號（例：BTC-USD）會自動去除幣種後綴後再查詢，BRK-A 等非加密貨幣代號則保持原樣查詢。</p>
+</blockquote>
+<hr>
 <h2>常見問題</h2>
 <p><strong>Q：忘記成本價怎麼辦？</strong><br>A：點資產右側的「<strong>鉛筆</strong>」編輯圖示，可以修改成本價和持倉數量。</p>
 <p><strong>Q：價格沒有更新？</strong><br>A：點頁面右上角的循環箭頭「<strong>重新整理</strong>」按鈕，會重新抓取所有資產的最新市價。股票代號打錯的話，抓不到價格，請確認代號是否正確（台積電是 <strong>2330</strong>，不是 2330.TW）。</p>
@@ -303,7 +329,7 @@
 <p><strong>Q：統計圖表是即時更新的嗎？</strong><br>A：統計（配置圖）是即時的，每次切換到統計頁籤都會用最新市價計算。趨勢圖則是每天記錄一次快照，不會在同一天內變動。</p>
 <p><strong>Q：交易所同步和手動新增可以同時使用嗎？</strong><br>A：可以。交易所同步回來的資產和你手動新增的資產會一起出現在資產列表中，互不干擾。</p>
 <hr>
-<p><em>AssetTracker v0.5.2 · 最後更新：2026-04-27</em></p>
+<p><em>AssetTracker v0.6.0 · 最後更新：2026-05-05</em></p>
 
     </div>
   </div>
