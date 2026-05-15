@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-05-15
+
+### Added
+- **Traditional Chinese news for TW & Crypto holdings**: News tab now shows headlines in 繁體中文 for Taiwan stocks (`.TW` / `.TWO`) and crypto (`BTC-USD` etc.) via Google News RSS (zh-TW locale). Source attribution surfaces the real publisher: **工商時報**, **鉅亨網**, **經濟日報** — not just "Google News". US stocks unchanged on Yahoo Finance English.
+- **`isCryptoSymbol()` helper**: New module-level predicate consolidating the "dash + known fiat suffix" check. `normalizeSymbol()` now calls it, eliminating duplicate detection logic.
+- **`shouldUseChineseNews()` dispatcher**: Routes TW/Crypto symbols to Google News, US/everything else to Yahoo Finance. Single point of decision for news language.
+- **`parseGoogleNewsRSS()`**: Browser-native DOMParser parses Google News RSS XML, with shadow-path filtering for missing `<pubDate>` / `<link>` / non-https URLs, CDATA-safe titles, and a top-5 slice cap.
+- **14 new tests** in `news.test.ts` (18 → 32 tests). Covers routing for `.TW` / `.TWO` / Crypto / US / BRK-A, RSS happy path, source attribution, all parser shadow paths, CDATA in titles, and cache hit on the ZH path.
+
+### Fixed
+- **Cloudflare Worker User-Agent**: The CORS proxy at `workers/cors-proxy/src/index.js` now sets a Chrome desktop User-Agent on upstream requests when one isn't provided. Without this, Google News RSS returns a "Sorry..." bot-detection HTML page and the news tab silently shows "暫無最新消息" for every TW/Crypto holding. **Requires worker redeploy: `cd workers/cors-proxy && wrangler deploy`**.
+
 ## [0.6.0] - 2026-05-05
 
 ### Added
