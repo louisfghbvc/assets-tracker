@@ -73,6 +73,14 @@ async function handleProxyRequest(request) {
             }
         }
 
+        // Set a real-browser User-Agent if none provided. Required because Google News RSS
+        // (news.google.com) returns a "Sorry..." bot-detection page when the User-Agent
+        // looks like a worker/bot. Browsers cannot set User-Agent from JS, so the proxy
+        // has to fill it in.
+        if (!forwardHeaders.has('User-Agent') && !forwardHeaders.has('user-agent')) {
+            forwardHeaders.set('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        }
+
         // Make the proxied request
         const response = await fetch(targetUrl, {
             method: body.method || 'GET',
