@@ -34,3 +34,6 @@ workers/**/node_modules
 workers/**/.wrangler
 workers/**/dist
 .gstack/
+
+# Git worktrees
+.worktrees/
