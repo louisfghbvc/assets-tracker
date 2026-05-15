@@ -60,20 +60,20 @@
 
 ---
 
-## news.ts — RSS fallback if Yahoo Finance search endpoint breaks
+## news.ts — Use Yahoo Finance longName for Chinese news queries
 
-**What:** If `query1.finance.yahoo.com/v1/finance/search` returns 403 or drifts its response shape consistently, switch to Google News RSS per symbol as a fallback data source.
+**What:** Fetch the Chinese `longName` from Yahoo Finance (`?q={symbol}&quotesCount=1&newsCount=0&lang=zh-Hant&region=TW`) and use it as the Google News query (e.g. `台積電 股票`) instead of the simple `{symbol} 台股` query.
 
-**Why:** Yahoo Finance search is an unofficial endpoint with no SLA. It has historically been rate-limited or shape-changed without notice. A silent fallback prevents the entire News tab going dark without user-visible explanation.
+**Why:** The current `{symbol} 台股` query (e.g. `2330 台股`) works but is less precise than the company name. Search results sometimes include unrelated market commentary rather than 台積電-specific news.
 
-**Pros:** Resilience. Google News RSS (`news.google.com/rss/search?q=NVDA+stock`) is stable, has real news, and requires only an XML parser. No API key needed.
+**Pros:** Materially better Chinese news precision; surfaces articles that mention 台積電 but not the 4-digit code; uses existing fetchViaProxy infrastructure.
 
-**Cons:** Adds an XML parsing code path (DOMParser). TW symbols need company name lookup for meaningful Google News results (2330.TW → search for company name, not the ticker). Medium complexity.
+**Cons:** Adds one extra proxy call per uncached symbol (mitigated by the 15-min cache). Yahoo Finance has to honor the `lang=zh-Hant` hint to return the Chinese name — needs verification per ticker. Need fallback to symbol+台股 if longName missing.
 
-**Context:** Flagged during the News tab CEO review (2026-05-05). The inline shape guard `Array.isArray(data?.news)` is the current mitigation. This is the principled fallback.
+**Context:** Deferred from the Chinese-news CEO review (2026-05-09). The simple-query approach was accepted as v0.6.x MVP. This is the precision upgrade — trigger when the user reports noisy or irrelevant TW results.
 
-**Effort estimate:** S (CC ~15 min once triggered) | **Priority:** P3
-**Depends on / blocked by:** News tab must ship first. Trigger this TODO if error logging shows repeated Yahoo Finance failures.
+**Effort estimate:** M (CC ~30 min) | **Priority:** P3
+**Depends on / blocked by:** Chinese news (D1 Approach B) must ship first.
 
 ---
 
