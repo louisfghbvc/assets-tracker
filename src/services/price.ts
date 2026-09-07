@@ -16,13 +16,41 @@ export interface CandleData {
 
 const BENCHMARK_CACHE_TTL_MS = 60 * 60 * 1000;
 
+export function parseTwsePrice(msg: any): number {
+    if (!msg) return 0;
+    const parseField = (val: any): number => {
+        if (typeof val === 'number' && !isNaN(val) && val > 0) return val;
+        if (typeof val === 'string') {
+            const trimmed = val.trim();
+            if (trimmed && trimmed !== '-') {
+                const first = trimmed.split('_')[0].trim();
+                if (first && first !== '-') {
+                    const p = parseFloat(first);
+                    if (!isNaN(p) && p > 0) return p;
+                }
+            }
+        }
+        return 0;
+    };
+
+    return parseField(msg.z) || parseField(msg.b) || parseField(msg.a) || parseField(msg.y) || 0;
+}
+
 export const priceService = {
     async fetchExchangeRate(): Promise<number> {
         try {
             if (!(window as any).__TAURI_INTERNALS__) {
-                const res = await fetch("https://open.er-api.com/v6/latest/USD");
-                const data = await res.json();
-                return data.rates?.TWD || 32.5;
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 5000);
+                try {
+                    const res = await fetch("https://open.er-api.com/v6/latest/USD", { signal: controller.signal });
+                    clearTimeout(timeout);
+                    const data = await res.json();
+                    return data.rates?.TWD || 32.5;
+                } catch {
+                    clearTimeout(timeout);
+                    return 32.5;
+                }
             } else {
                 const { invoke } = await import("@tauri-apps/api/core");
                 return await invoke("fetch_exchange_rate");
@@ -50,6 +78,8 @@ export const priceService = {
     },
 
     async fetchPricesWeb(symbols: string[]): Promise<PriceResult[]> {
+        if (symbols.length === 0) return [];
+
         // Helper function to fetch with timeout (for fallback proxies)
         const fetchWithTimeout = async (url: string, timeoutMs = 5000): Promise<Response> => {
             const controller = new AbortController();
@@ -67,198 +97,247 @@ export const priceService = {
         // Fallback proxy list (used if worker fails or is not configured)
         const fallbackProxies = [
             "https://api.codetabs.com/v1/proxy?quest=",
-            "https://api.allorigins.win/raw?url=",
-            "https://corsproxy.io/?"
+            "https://api.allorigins.win/raw?url="
         ];
 
-        const fetchSinglePrice = async (symbol: string): Promise<PriceResult | null> => {
-            const sanitized = symbol.trim().split(/\s+/)[0];
-
-            // Filter out empty or invalid symbols
-            if (!sanitized || sanitized === '.TW' || sanitized === '.TWO' || sanitized.length === 0) {
-                console.warn(`⚠️ Skipping invalid symbol: "${symbol}"`);
-                return null;
-            }
-
-            if (sanitized === 'USD' || sanitized === 'USD-USD' || sanitized === 'TWD') {
-                return { symbol, price: 1 };
-            }
-
-            const timestamp = Date.now();
-            const yahooSymbol = sanitized === 'BTC' ? 'BTC-USD' : sanitized === 'ETH' ? 'ETH-USD' : sanitized === 'SOL' ? 'SOL-USD' : sanitized;
-
-            const targetUrl = sanitized.endsWith(".TW")
-                ? `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${sanitized.replace(".TW", "")}.tw&json=1&_=${timestamp}`
-                : `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d&_=${timestamp}`;
-
+        const fetchJsonFromUrl = async (targetUrl: string, timeoutMs = 5000): Promise<any> => {
             // Try Cloudflare Worker first
-            const workerResponse = await fetchViaProxy(targetUrl);
+            const workerResponse = await fetchViaProxy(targetUrl, timeoutMs);
             if (workerResponse) {
                 try {
                     const text = await workerResponse.text();
                     let json: any;
-
                     try {
                         json = JSON.parse(text);
-                    } catch {
-                        // Try unwrapping if proxy wrapped the response
-                        try {
-                            const wrapped = JSON.parse(text);
-                            if (wrapped.contents) {
-                                json = JSON.parse(wrapped.contents);
-                            }
-                        } catch {
-                            // Continue to fallback proxies
+                        if (json && json.contents) {
+                            try { json = JSON.parse(json.contents); } catch {}
                         }
-                    }
-
-                    if (json) {
-                        if (sanitized.endsWith(".TW")) {
-                            if (json.msgArray && json.msgArray[0]) {
-                                const msg = json.msgArray[0];
-                                const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
-
-                                if (price > 0) {
-                                    console.log(`✓ ${symbol}: $${price} (via worker)`);
-                                    return { symbol, price };
-                                }
-                            }
-                        } else {
-                            const price = json.chart?.result?.[0]?.meta?.regularMarketPrice;
-                            if (price) {
-                                console.log(`✓ ${symbol}: $${price} (via worker)`);
-                                return { symbol, price };
-                            }
+                        if (json && !json.error && !json.finance?.error && !json.chart?.error && !json.quoteResponse?.error) {
+                            return json;
                         }
-                    }
-                } catch {
-                    // Fall through to fallback proxies
-                }
+                    } catch {}
+                } catch {}
             }
 
             // Try fallback proxies
             for (let i = 0; i < fallbackProxies.length; i++) {
                 const proxy = fallbackProxies[i];
                 const fullUrl = proxy + encodeURIComponent(targetUrl);
-
                 try {
-                    const res = await fetchWithTimeout(fullUrl);
+                    const res = await fetchWithTimeout(fullUrl, timeoutMs);
                     if (!res.ok) continue;
 
                     const text = await res.text();
-
-                    // Check for rate limit response
                     if (text.includes('Too many requests') || text.includes('rate limit')) {
-                        console.warn(`⚠️ Fallback proxy ${i} rate limited for ${symbol}`);
                         continue;
                     }
 
                     let json: any;
                     try {
                         json = JSON.parse(text);
-                    } catch {
-                        // Try unwrapping if proxy wrapped the response
-                        try {
-                            const wrapped = JSON.parse(text);
-                            if (wrapped.contents) {
-                                json = JSON.parse(wrapped.contents);
-                            } else {
-                                continue;
-                            }
-                        } catch {
-                            continue;
+                        if (json && json.contents) {
+                            try { json = JSON.parse(json.contents); } catch {}
                         }
-                    }
-
-                    if (sanitized.endsWith(".TW")) {
-                        if (json.msgArray && json.msgArray[0]) {
-                            const msg = json.msgArray[0];
-                            const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
-
-                            if (price > 0) {
-                                console.log(`✓ ${symbol}: $${price} (fallback proxy ${i})`);
-                                return { symbol, price };
-                            }
-                        }
-                    } else {
-                        const price = json.chart?.result?.[0]?.meta?.regularMarketPrice;
-                        if (price) {
-                            console.log(`✓ ${symbol}: $${price} (fallback proxy ${i})`);
-                            return { symbol, price };
-                        }
-                    }
-                } catch (error: any) {
-                    continue;
-                }
-            }
-
-            // Fallback for TWSE OTC stocks
-            if (sanitized.endsWith(".TW")) {
-                const code = sanitized.replace(".TW", "");
-                const otcUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${code}.tw&json=1&_=${timestamp}`;
-
-                // Try Cloudflare Worker first for OTC
-                const workerOtcRes = await fetchViaProxy(otcUrl);
-                if (workerOtcRes) {
-                    try {
-                        const text = await workerOtcRes.text();
-                        let json: any = JSON.parse(text);
-                        if (json.contents) json = JSON.parse(json.contents);
-                        if (json.msgArray && json.msgArray[0]) {
-                            const msg = json.msgArray[0];
-                            const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
-                            if (price > 0) {
-                                console.log(`✓ ${symbol} (OTC/worker): $${price}`);
-                                return { symbol, price };
-                            }
-                        }
-                    } catch {
-                        // Fall through to fallback proxies
-                    }
-                }
-
-                for (let i = 0; i < fallbackProxies.length; i++) {
-                    const proxy = fallbackProxies[i];
-                    const fullUrl = proxy + encodeURIComponent(otcUrl);
-
-                    try {
-                        const res = await fetchWithTimeout(fullUrl);
-                        if (!res.ok) continue;
-
-                        let text = await res.text();
-                        let json = JSON.parse(text);
-                        if (json.contents) json = JSON.parse(json.contents);
-                        if (json.msgArray && json.msgArray[0]) {
-                            const msg = json.msgArray[0];
-                            const price = parseFloat(msg.z && msg.z !== "-" ? msg.z : (msg.b?.split('_')[0] || msg.y)) || 0;
-                            if (price > 0) {
-                                console.log(`✓ ${symbol} (OTC/fallback): $${price}`);
-                                return { symbol, price };
-                            }
+                        if (json && !json.error && !json.finance?.error && !json.chart?.error && !json.quoteResponse?.error) {
+                            return json;
                         }
                     } catch {
                         continue;
                     }
+                } catch {
+                    continue;
                 }
             }
-
-            console.error(`✗ Failed to fetch: ${symbol}`);
             return null;
         };
 
-        // Fetch prices with small batches and delays to avoid rate limits
-        const BATCH_SIZE = 2; // Reduced to 2 to avoid overwhelming free proxies
-        const BATCH_DELAY_MS = 500; // 0.5 second delay between batches
+        const resultsMap = new Map<string, number>();
+        const twItems: { original: string; sanitized: string; code: string }[] = [];
+        const usCryptoItems: { original: string; sanitized: string; yahoo: string }[] = [];
+
+        for (const symbol of symbols) {
+            const sanitized = symbol.trim().split(/\s+/)[0];
+            const upper = sanitized.toUpperCase();
+            if (!upper || upper === '.TW' || upper === '.TWO') {
+                console.warn(`⚠️ Skipping invalid symbol: "${symbol}"`);
+                continue;
+            }
+
+            if (upper === 'USD' || upper === 'USD-USD' || upper === 'TWD') {
+                resultsMap.set(symbol, 1);
+                continue;
+            }
+
+            if (upper.endsWith('.TW') || upper.endsWith('.TWO')) {
+                const code = upper.replace(/\.TW(O)?$/i, '');
+                twItems.push({ original: symbol, sanitized, code });
+            } else {
+                const yahoo = upper === 'BTC' ? 'BTC-USD' : upper === 'ETH' ? 'ETH-USD' : upper === 'SOL' ? 'SOL-USD' : upper;
+                usCryptoItems.push({ original: symbol, sanitized, yahoo });
+            }
+        }
+
+        const timestamp = Date.now();
+
+        // 1. Fetch Taiwan stocks concurrently in batches with TSE & OTC combined
+        const fetchTaiwanStocks = async () => {
+            if (twItems.length === 0) return;
+
+            const BATCH_SIZE = 20;
+            const batches: typeof twItems[] = [];
+            for (let i = 0; i < twItems.length; i += BATCH_SIZE) {
+                batches.push(twItems.slice(i, i + BATCH_SIZE));
+            }
+
+            await Promise.all(batches.map(async batch => {
+                const uniqueCodes = Array.from(new Set(batch.map(item => item.code)));
+                const exCh = uniqueCodes.map(code => `tse_${code}.tw|otc_${code}.tw`).join('|');
+                const targetUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&_=${timestamp}`;
+
+                const json = await fetchJsonFromUrl(targetUrl);
+                if (json && Array.isArray(json.msgArray)) {
+                    for (const msg of json.msgArray) {
+                        const rawC = msg.c != null ? String(msg.c).trim() : '';
+                        const rawAt = msg['@'] != null ? String(msg['@']).trim().split('.')[0] : '';
+                        const rawCh = msg.ch != null ? String(msg.ch).trim().split('.')[0] : '';
+                        const code = (rawC || rawAt || rawCh).toUpperCase();
+                        const price = parseTwsePrice(msg);
+
+                        if (price > 0) {
+                            for (const item of batch) {
+                                if (item.code === code) {
+                                    resultsMap.set(item.original, price);
+                                }
+                            }
+                            if (batch.length === 1 && !resultsMap.has(batch[0].original)) {
+                                resultsMap.set(batch[0].original, price);
+                            }
+                        }
+                    }
+                }
+            }));
+
+            // Concurrent fallback for any unresolved Taiwan stocks
+            const missing = twItems.filter(item => !resultsMap.has(item.original));
+            if (missing.length > 0) {
+                await Promise.all(missing.map(async item => {
+                    const tseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${item.code}.tw&json=1&_=${timestamp}`;
+                    const otcUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${item.code}.tw&json=1&_=${timestamp}`;
+
+                    const [tseJson, otcJson] = await Promise.all([
+                        fetchJsonFromUrl(tseUrl),
+                        fetchJsonFromUrl(otcUrl)
+                    ]);
+
+                    const getValidPrice = (arr: any) => Array.isArray(arr) ? arr.map(parseTwsePrice).find((p: number) => p > 0) || 0 : 0;
+                    const price = getValidPrice(tseJson?.msgArray) || getValidPrice(otcJson?.msgArray);
+                    if (price > 0) {
+                        resultsMap.set(item.original, price);
+                    }
+                }));
+            }
+        };
+
+        // 2. Fetch US stocks & Crypto assets concurrently using lightweight batch quote queries
+        const fetchUsCryptoStocks = async () => {
+            if (usCryptoItems.length === 0) return;
+
+            const BATCH_SIZE = 30;
+            const batches: typeof usCryptoItems[] = [];
+            for (let i = 0; i < usCryptoItems.length; i += BATCH_SIZE) {
+                batches.push(usCryptoItems.slice(i, i + BATCH_SIZE));
+            }
+
+            await Promise.all(batches.map(async batch => {
+                const uniqueSymbols = Array.from(new Set(batch.map(b => b.yahoo)));
+                const symbolsParam = uniqueSymbols.join(',');
+                const batchQuoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbolsParam}&_=${timestamp}`;
+
+                const json = await fetchJsonFromUrl(batchQuoteUrl);
+
+                if (json) {
+                    // Check quoteResponse (multi-symbol quote format)
+                    if (json.quoteResponse && Array.isArray(json.quoteResponse.result)) {
+                        for (const quote of json.quoteResponse.result) {
+                            const sym = quote.symbol?.toUpperCase();
+                            const price = [quote.regularMarketPrice, quote.postMarketPrice, quote.preMarketPrice, quote.previousClose]
+                                .find(p => typeof p === 'number' && !isNaN(p) && p > 0);
+                            if (typeof price === 'number' && price > 0) {
+                                for (const b of batch) {
+                                    if (b.yahoo.toUpperCase() === sym) {
+                                        resultsMap.set(b.original, price);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Also check chart.result (format returned by mock or chart endpoints)
+                    if (Array.isArray(json.chart?.result)) {
+                        for (const chartItem of json.chart.result) {
+                            const chartSym = chartItem?.meta?.symbol?.toUpperCase();
+                            const meta = chartItem?.meta;
+                            let chartPrice = (typeof meta?.regularMarketPrice === 'number' && meta.regularMarketPrice > 0)
+                                ? meta.regularMarketPrice
+                                : ((typeof meta?.chartPreviousClose === 'number' && meta.chartPreviousClose > 0)
+                                    ? meta.chartPreviousClose
+                                    : undefined);
+                            if (typeof chartPrice !== 'number' || chartPrice <= 0) {
+                                const closes = chartItem?.indicators?.quote?.[0]?.close;
+                                if (Array.isArray(closes)) {
+                                    const lastClose = [...closes].reverse().find((c: any) => typeof c === 'number' && c > 0);
+                                    if (typeof lastClose === 'number') chartPrice = lastClose;
+                                }
+                            }
+                            if (typeof chartPrice === 'number' && chartPrice > 0) {
+                                for (const b of batch) {
+                                    if (chartSym && b.yahoo.toUpperCase() === chartSym) {
+                                        resultsMap.set(b.original, chartPrice);
+                                    } else if (!chartSym && batch.length === 1) {
+                                        resultsMap.set(b.original, chartPrice);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }));
+
+            // Concurrent fallback for any unresolved US / Crypto symbols
+            const missing = usCryptoItems.filter(item => !resultsMap.has(item.original));
+            if (missing.length > 0) {
+                await Promise.all(missing.map(async item => {
+                    const chartUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${item.yahoo}?interval=1d&range=1d&_=${timestamp}`;
+                    const json = await fetchJsonFromUrl(chartUrl);
+                    const meta = json?.chart?.result?.[0]?.meta;
+                    let price = (typeof meta?.regularMarketPrice === 'number' && meta.regularMarketPrice > 0)
+                        ? meta.regularMarketPrice
+                        : ((typeof meta?.chartPreviousClose === 'number' && meta.chartPreviousClose > 0)
+                            ? meta.chartPreviousClose
+                            : undefined);
+                    if (typeof price !== 'number' || price <= 0) {
+                        const closes = json?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+                        if (Array.isArray(closes)) {
+                            const lastClose = [...closes].reverse().find((c: any) => typeof c === 'number' && c > 0);
+                            if (typeof lastClose === 'number') price = lastClose;
+                        }
+                    }
+                    if (typeof price === 'number' && price > 0) {
+                        resultsMap.set(item.original, price);
+                    }
+                }));
+            }
+        };
+
+        // Fetch both categories concurrently
+        await Promise.all([fetchTaiwanStocks(), fetchUsCryptoStocks()]);
+
+        // Preserve input symbol ordering
         const results: PriceResult[] = [];
-
-        for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
-            const batch = symbols.slice(i, i + BATCH_SIZE);
-            const batchResults = await Promise.all(batch.map(fetchSinglePrice));
-            results.push(...batchResults.filter((r): r is PriceResult => r !== null));
-
-            // Add delay between batches (except for the last batch)
-            if (i + BATCH_SIZE < symbols.length) {
-                await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+        for (const sym of symbols) {
+            const price = resultsMap.get(sym);
+            if (price !== undefined) {
+                results.push({ symbol: sym, price });
             }
         }
 
@@ -400,8 +479,7 @@ export const priceService = {
 
         const fallbackProxies = [
             "https://api.codetabs.com/v1/proxy?quest=",
-            "https://api.allorigins.win/raw?url=",
-            "https://corsproxy.io/?"
+            "https://api.allorigins.win/raw?url="
         ];
 
         // Narrow 7-day window around startDate to get the opening price

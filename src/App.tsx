@@ -482,23 +482,49 @@ function App() {
       setSyncStatus(t('refreshingPrices'));
       const activeRate = await fetchExchangeRate();
       const allAssets = await db.assets.toArray();
-      const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol)));
+      const uniqueSymbols = Array.from(new Set(allAssets.map(a => a.symbol.trim()).filter(s => s.length > 0)));
 
       if (uniqueSymbols.length > 0) {
         const prices = await priceService.fetchPrices(uniqueSymbols);
         if (prices.length > 0) {
-          const priceMap = new Map(prices.map(p => [p.symbol.trim(), p.price]));
-
-          for (const asset of allAssets) {
-            const trimmedSymbol = asset.symbol.trim();
-            const newPrice = priceMap.get(trimmedSymbol);
-            if (newPrice !== undefined && asset.id) {
-              await db.assets.update(asset.id, {
-                currentPrice: newPrice,
-                lastUpdated: Date.now()
-              });
-            }
+          const priceMap = new Map<string, number>();
+          for (const p of prices) {
+            const trimmed = p.symbol.trim();
+            priceMap.set(trimmed, p.price);
+            priceMap.set(trimmed.toUpperCase(), p.price);
           }
+          const now = Date.now();
+
+          await db.transaction('rw', db.assets, async () => {
+            const updates = allAssets
+              .filter(asset => {
+                if (asset.id === undefined) return false;
+                const sym = asset.symbol.trim();
+                const p = priceMap.get(sym) ?? priceMap.get(sym.toUpperCase());
+                return typeof p === 'number' && !isNaN(p) && p > 0;
+              })
+              .map(asset => {
+                const sym = asset.symbol.trim();
+                const price = (priceMap.get(sym) ?? priceMap.get(sym.toUpperCase()))!;
+                return {
+                  key: asset.id!,
+                  changes: {
+                    currentPrice: price,
+                    lastUpdated: now
+                  }
+                };
+              });
+
+            if (updates.length > 0) {
+              if (typeof db.assets.bulkUpdate === 'function') {
+                await db.assets.bulkUpdate(updates);
+              } else {
+                for (const u of updates) {
+                  await db.assets.update(u.key, u.changes);
+                }
+              }
+            }
+          });
         }
       }
 
