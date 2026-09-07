@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-09-07
+
+### Added
+- **High-Performance Batch Price Updates**:
+  - Implemented Yahoo Finance batch quote fetching (`/v7/finance/quote?symbols=...`) for US stocks and Crypto assets, fetching lightweight quotes for multiple symbols simultaneously instead of individual large 1-day 1-minute chart JSONs.
+  - Combined TWSE & TPEx (OTC) lookups into consolidated requests (`ex_ch=tse_{code}.tw|otc_{code}.tw`), eliminating sequential trial-and-error delays.
+  - Removed artificial sequential sleep pauses (500ms in Web, 200ms in Tauri) and enabled parallel concurrency.
+  - Grouped Dexie database asset price updates in `App.tsx` into a single atomic transaction, preventing repeated UI re-render thrashing.
+  - Added 17 new unit tests for batch price fetching, concurrency, and error handling.
+
+### Removed
+- **News Tab Feature**:
+  - Removed the News tab from the UI navigation and activeTab state.
+  - Deleted `NewsTab.tsx`, `services/news.ts`, and `services/__tests__/news.test.ts`.
+  - Cleaned up news-related CSS styles and translation keys (EN/ZH).
+
 ## [0.7.0] - 2026-05-15
 
 ### Added

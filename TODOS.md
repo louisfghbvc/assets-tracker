@@ -44,38 +44,6 @@
 
 **Depends on / blocked by:** 無，可獨立出貨。
 
-## news.ts — Inline news on asset cards
-
-**What:** Show the latest news headline per symbol directly in the asset list row. Tapping/hovering triggers a popover with 3 headlines. Eliminates the need to switch to the News tab just to check news for one specific holding.
-
-**Why:** The News tab groups all holdings together. When you want context on a single position that just moved, clicking into that asset's card is the natural action — not navigating to a separate tab.
-
-**Pros:** Higher contextual relevance; zero new data fetching (reuses newsService from the News tab); fast perceived response from cache.
-
-**Cons:** UI work for popover positioning (must handle overflow, mobile, and scroll); adds complexity to the asset card component which is already fairly dense.
-
-**Context:** Deferred from the News tab plan (2026-05-05). The News tab is the v0.6.x solution. This is the logical next iteration.
-
-**Depends on / blocked by:** News tab (news.ts + NewsTab.tsx) must ship first.
-
----
-
-## news.ts — Use Yahoo Finance longName for Chinese news queries
-
-**What:** Fetch the Chinese `longName` from Yahoo Finance (`?q={symbol}&quotesCount=1&newsCount=0&lang=zh-Hant&region=TW`) and use it as the Google News query (e.g. `台積電 股票`) instead of the simple `{symbol} 台股` query.
-
-**Why:** The current `{symbol} 台股` query (e.g. `2330 台股`) works but is less precise than the company name. Search results sometimes include unrelated market commentary rather than 台積電-specific news.
-
-**Pros:** Materially better Chinese news precision; surfaces articles that mention 台積電 but not the 4-digit code; uses existing fetchViaProxy infrastructure.
-
-**Cons:** Adds one extra proxy call per uncached symbol (mitigated by the 15-min cache). Yahoo Finance has to honor the `lang=zh-Hant` hint to return the Chinese name — needs verification per ticker. Need fallback to symbol+台股 if longName missing.
-
-**Context:** Deferred from the Chinese-news CEO review (2026-05-09). The simple-query approach was accepted as v0.6.x MVP. This is the precision upgrade — trigger when the user reports noisy or irrelevant TW results.
-
-**Effort estimate:** M (CC ~30 min) | **Priority:** P3
-**Depends on / blocked by:** Chinese news (D1 Approach B) must ship first.
-
----
 
 ## performance.ts — Include realized gains (SellRecords) in portfolio annualized return
 
