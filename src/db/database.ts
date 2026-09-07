@@ -39,6 +39,7 @@ export interface ExchangeConfig {
     apiKey: string;
     apiSecret: string;
     lastSynced?: number;
+    lastError?: string;
 }
 
 export interface SyncLog {

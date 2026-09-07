@@ -2149,6 +2149,13 @@ input:focus {
   background: rgba(var(--primary-rgb), 0.1);
 }
 
+.inline-sync-btn:disabled,
+.inline-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .inline-delete-btn:hover {
   color: var(--accent);
   border-color: var(--accent);

@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import App from '../App';
 
 import { useLiveQuery } from 'dexie-react-hooks';
+import { exchangeService } from '../services/exchange';
+import { db } from '../db/database';
 
 // Mock DB hooks
 vi.mock('dexie-react-hooks', () => ({
@@ -31,6 +33,7 @@ describe('App', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         localStorage.clear();
+        vi.spyOn(db.assets, 'count').mockResolvedValue(0);
     });
 
     it('should render login screen if no access token', () => {
@@ -163,5 +166,81 @@ describe('App', () => {
 
         // Assert a string unique to PerformanceView (not the tab label)
         expect(screen.getByText('績效總覽')).toBeInTheDocument();
+    });
+
+    it('should display exchange lastError on settings tab when sync failed', () => {
+        localStorage.setItem('google_access_token', 'fake-token');
+        const mockExchanges = [
+            { id: 1, exchangeName: 'pionex', apiKey: 'pk', apiSecret: 'ps', lastError: 'API key expired' }
+        ];
+        vi.mocked(useLiveQuery).mockImplementation((fn: any) => {
+            const key = fn.toString();
+            if (key.includes('exchangeConfigs') || key.includes('ExchangeConfig')) return mockExchanges;
+            return [];
+        });
+
+        render(<App />);
+
+        const settingsTab = screen.getByTestId('tab-settings');
+        fireEvent.click(settingsTab);
+
+        expect(screen.getByText(/API key expired/)).toBeInTheDocument();
+    });
+
+    it('disables sync and delete buttons while single exchange sync is in progress', async () => {
+        localStorage.setItem('google_access_token', 'fake-token');
+        const mockExchanges = [
+            { id: 1, exchangeName: 'pionex', apiKey: 'pk', apiSecret: 'ps' }
+        ];
+        vi.mocked(useLiveQuery).mockImplementation((fn: any) => {
+            const key = fn.toString();
+            if (key.includes('exchangeConfigs') || key.includes('ExchangeConfig')) return mockExchanges;
+            return [];
+        });
+
+        let resolveSync: any;
+        const syncPromise = new Promise((resolve) => { resolveSync = resolve; });
+        vi.spyOn(exchangeService, 'syncBalances').mockReturnValue(syncPromise as any);
+
+        render(<App />);
+
+        const settingsTab = screen.getByTestId('tab-settings');
+        fireEvent.click(settingsTab);
+
+        const syncBtn = document.querySelector('.inline-sync-btn') as HTMLButtonElement;
+        const deleteBtn = document.querySelector('.inline-delete-btn') as HTMLButtonElement;
+
+        expect(syncBtn).not.toBeNull();
+        expect(deleteBtn).not.toBeNull();
+        expect(syncBtn.disabled).toBe(false);
+        expect(deleteBtn.disabled).toBe(false);
+
+        await act(async () => {
+            fireEvent.click(syncBtn);
+        });
+
+        // While syncing, both buttons must be disabled
+        expect(syncBtn.disabled).toBe(true);
+        expect(deleteBtn.disabled).toBe(true);
+
+        // Finish sync
+        await act(async () => {
+            resolveSync({ success: true, count: 0 });
+            await syncPromise;
+        });
+    });
+
+    it('does not update state or crash when unmounted while startup check is pending', async () => {
+        let resolveCount: any;
+        const countPromise = new Promise<number>((resolve) => { resolveCount = resolve; });
+        vi.spyOn(db.assets, 'count').mockReturnValue(countPromise as any);
+
+        const { unmount } = render(<App />);
+        unmount();
+
+        await act(async () => {
+            resolveCount(5);
+            await countPromise;
+        });
     });
 });

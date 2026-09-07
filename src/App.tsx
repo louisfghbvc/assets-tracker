@@ -30,7 +30,7 @@ import "./App.css";
 const GUIDE_BANNER_KEY = 'guide_banner_dismissed';
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type Asset, type SellRecord } from "./db/database";
+import { db, type Asset, type SellRecord, type ExchangeConfig } from "./db/database";
 import { PerformanceView } from "./components/PerformanceView";
 import { useGoogleLogin } from "@react-oauth/google";
 import { syncService } from "./services/sync";
@@ -105,6 +105,7 @@ const MARKET_LABELS: Record<string, string> = { TW: '台股', US: '美股', Cryp
 
 function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [syncingExchangeId, setSyncingExchangeId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<number | null>(null);
@@ -187,22 +188,41 @@ function App() {
     }
   }, []);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const initialRefreshStarted = useRef(false);
 
   // Auto-refresh on startup to update prices and record history
   useEffect(() => {
+    let isMounted = true;
     const checkAndRefresh = async () => {
       if (!hasInitialRefreshed && !initialRefreshStarted.current) {
-        // Only refresh if we have assets
-        const assetCount = await db.assets.count();
-        if (assetCount > 0) {
-          initialRefreshStarted.current = true;
-          handleRefresh();
+        try {
+          // Only refresh if we have assets
+          const assetCount = await db.assets.count();
+          if (!isMounted || typeof window === 'undefined') return;
+          if (assetCount > 0) {
+            initialRefreshStarted.current = true;
+            handleRefresh();
+          }
+          if (isMounted && typeof window !== 'undefined') {
+            setHasInitialRefreshed(true);
+          }
+        } catch {
+          // Ignore unmount or database teardown errors during startup check
         }
-        setHasInitialRefreshed(true);
       }
     };
     checkAndRefresh();
+    return () => {
+      isMounted = false;
+    };
   }, [hasInitialRefreshed]);
 
   const fetchUserProfile = async (token: string) => {
@@ -210,6 +230,7 @@ function App() {
       const res = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!isMountedRef.current || typeof window === 'undefined') return;
       if (res.status === 401) {
         handleLogout();
         setSyncStatus(t('sessionExpired'));
@@ -217,6 +238,7 @@ function App() {
       }
       if (res.ok) {
         const data = await res.json();
+        if (!isMountedRef.current || typeof window === 'undefined') return;
         const profile = { name: data.name, email: data.email, picture: data.picture };
         setUserProfile(profile);
         localStorage.setItem('user_profile', JSON.stringify(profile));
@@ -340,9 +362,15 @@ function App() {
   }, [assets]);
 
   const fetchExchangeRate = async () => {
-    const rate = await priceService.fetchExchangeRate();
-    setExchangeRate(rate);
-    return rate;
+    try {
+      const rate = await priceService.fetchExchangeRate();
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setExchangeRate(rate);
+      }
+      return rate;
+    } catch {
+      return 32.5;
+    }
   };
 
   useEffect(() => {
@@ -464,21 +492,26 @@ function App() {
   };
 
   const handleRefresh = async () => {
-    if (isRefreshing) return;
+    if (isRefreshing || syncingExchangeId !== null || !isMountedRef.current || typeof window === 'undefined') return;
     setIsRefreshing(true);
     setSyncStatus(t('refreshing'));
 
     try {
       setSyncStatus(t('syncingExchanges'));
       const configs = await db.exchangeConfigs.toArray();
-      for (const config of configs) {
-        try {
-          await exchangeService.syncBalances(config);
-        } catch (e) {
-          console.error(`Failed to sync ${config.exchangeName}:`, e);
-        }
+      if (!isMountedRef.current || typeof window === 'undefined') return;
+      if (configs.length > 0) {
+        const results = await Promise.allSettled(
+          configs.map(config => exchangeService.syncBalances(config))
+        );
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(`Failed to sync ${configs[index].exchangeName}: ${result.reason?.message || result.reason}`);
+          }
+        });
       }
 
+      if (!isMountedRef.current || typeof window === 'undefined') return;
       setSyncStatus(t('refreshingPrices'));
       const activeRate = await fetchExchangeRate();
       const allAssets = await db.assets.toArray();
@@ -528,6 +561,7 @@ function App() {
         }
       }
 
+      if (!isMountedRef.current || typeof window === 'undefined') return;
       setSyncStatus(t('refreshComplete'));
 
       // Save a snapshot of the current balance to history
@@ -543,11 +577,44 @@ function App() {
         await historyService.saveDailySnapshot(currentBalance);
       }
     } catch (e) {
+      if (!isMountedRef.current || typeof window === 'undefined') return;
       console.error("Refresh failed:", e);
       setSyncStatus(t('refreshFailed'));
     } finally {
-      setIsRefreshing(false);
-      setTimeout(() => setSyncStatus(""), 3000);
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setIsRefreshing(false);
+        setTimeout(() => {
+          if (isMountedRef.current && typeof window !== 'undefined') {
+            setSyncStatus("");
+          }
+        }, 3000);
+      }
+    }
+  };
+
+  const handleSyncSingleExchange = async (config: ExchangeConfig) => {
+    if (isRefreshing || syncingExchangeId !== null || !isMountedRef.current || typeof window === 'undefined') return;
+    setSyncingExchangeId(config.id ?? -1);
+    try {
+      setSyncStatus(`${t('syncingExchanges')} (${t(config.exchangeName as any)})...`);
+      await exchangeService.syncBalances(config);
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setSyncStatus(t('refreshComplete'));
+      }
+    } catch (e: any) {
+      console.error(`Failed to sync ${config.exchangeName}: ${e.message || e}`);
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setSyncStatus(t('refreshFailed'));
+      }
+    } finally {
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setSyncingExchangeId(null);
+        setTimeout(() => {
+          if (isMountedRef.current && typeof window !== 'undefined') {
+            setSyncStatus("");
+          }
+        }, 3000);
+      }
     }
   };
 
@@ -1087,6 +1154,11 @@ function App() {
                       <p className="exchange-sync-time">
                         {t('lastSynced')}: {config.lastSynced ? new Date(config.lastSynced).toLocaleString() : t('never')}
                       </p>
+                      {config.lastError && (
+                        <p className="exchange-sync-error" style={{ color: 'var(--accent)', fontSize: '0.8rem', marginTop: '4px' }}>
+                          ⚠️ {config.lastError}
+                        </p>
+                      )}
                       {exchangeTotals[config.exchangeName] > 0 && (
                         <p className="exchange-balance-total">
                           {displayValue(exchangeTotals[config.exchangeName], '$')} TWD
@@ -1096,18 +1168,20 @@ function App() {
                     <div className="exchange-actions">
                       <button
                         className="inline-sync-btn"
-                        onClick={() => exchangeService.syncBalances(config)}
+                        onClick={() => handleSyncSingleExchange(config)}
                         title={t('syncExchange')}
+                        disabled={isRefreshing || syncingExchangeId !== null}
                       >
-                        <RefreshCw size={18} />
+                        <RefreshCw size={18} className={syncingExchangeId === config.id ? 'spin' : ''} />
                       </button>
                       <button
                         className="inline-delete-btn"
                         onClick={() => {
-                          if (config.id && window.confirm(t('confirmDeleteExchange'))) {
+                          if (config.id !== undefined && window.confirm(t('confirmDeleteExchange'))) {
                             exchangeService.deleteExchange(config.id, config.exchangeName);
                           }
                         }}
+                        disabled={isRefreshing || syncingExchangeId !== null}
                       >
                         <Trash2 size={18} />
                       </button>
