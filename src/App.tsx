@@ -16,8 +16,7 @@ import {
   EyeOff,
   HelpCircle,
   Pencil,
-  BarChart2,
-  Newspaper
+  BarChart2
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -44,7 +43,6 @@ import { translations, Language } from "./translations";
 import { PriceChart } from "./components/PriceChart";
 import { historyService } from "./services/history";
 import { TrendChart } from "./components/TrendChart";
-import { NewsTab } from "./components/Tabs/NewsTab";
 
 const failedLogos = new Set<string>();
 
@@ -119,7 +117,7 @@ function App() {
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
   const [chartAsset, setChartAsset] = useState<any | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'trend' | 'performance' | 'news' | 'settings'>('assets');
+  const [activeTab, setActiveTab] = useState<'assets' | 'stats' | 'trend' | 'performance' | 'settings'>('assets');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [marketFilter, setMarketFilter] = useState<string | null>(null);
   const [statsView, setStatsView] = useState<'market' | 'asset'>('asset');
@@ -1361,15 +1359,6 @@ function App() {
         />
       )}
 
-      {/* News Tab */}
-      {activeTab === 'news' && (
-        <NewsTab
-          assets={assets ?? []}
-          exchangeRate={exchangeRate}
-          language={language}
-        />
-      )}
-
       {/* Modal */}
       <AddAssetModal
         isOpen={isModalOpen}
@@ -1411,10 +1400,6 @@ function App() {
         <div data-testid="tab-performance" className={`tab-item ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')}>
           <BarChart2 size={24} />
           <span className="tab-label">{t('performance')}</span>
-        </div>
-        <div data-testid="tab-news" className={`tab-item ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
-          <Newspaper size={24} />
-          <span className="tab-label">{t('news')}</span>
         </div>
         <div data-testid="tab-settings" className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
           <GanttChartSquare size={24} />
