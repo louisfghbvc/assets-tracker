@@ -101,6 +101,13 @@ const MARKET_COLORS: Record<string, string[]> = {
   Crypto: ['#f59e0b', '#d97706', '#fbbf24', '#b45309', '#fcd34d'],
 };
 const MARKET_ORDER = ['TW', 'US', 'Crypto'];
+const TREND_RANGE_LABEL_KEYS = {
+  '1W': 'range1W',
+  '1M': 'range1M',
+  '3M': 'range3M',
+  '1Y': 'range1Y',
+  MAX: 'rangeMax',
+} as const;
 const MARKET_LABELS: Record<string, string> = { TW: '台股', US: '美股', Crypto: '加密貨幣' };
 
 function App() {
@@ -1346,33 +1353,41 @@ function App() {
                       <button
                         key={r}
                         className={`range-btn ${trendRange === r ? 'active' : ''}`}
+                        aria-pressed={trendRange === r}
                         onClick={() => setTrendRange(r)}
                       >
-                        {t(`range${r}` as any)}
+                        {t(TREND_RANGE_LABEL_KEYS[r])}
                       </button>
                     ))}
                   </div>
                   <div className="mode-toggle">
                     <button
                       className={`mode-btn ${trendMode === 'value' ? 'active' : ''}`}
+                      aria-pressed={trendMode === 'value'}
                       onClick={() => setTrendMode('value')}
                     >
                       {t('total')}
                     </button>
                     <button
                       className={`mode-btn ${trendMode === 'percent' ? 'active' : ''}`}
+                      aria-pressed={trendMode === 'percent'}
                       onClick={() => setTrendMode('percent')}
                     >
-                      {t('profitPercent')}
+                      {t('assetChangePercent')}
                     </button>
                   </div>
                 </div>
               </div>
 
-              {filteredHistory && filteredHistory.length > 0 ? (
-                <>
-                  <TrendChart data={filteredHistory} darkMode={true} mode={trendMode} />
+              <TrendChart
+                data={filteredHistory}
+                darkMode={true}
+                mode={trendMode}
+                language={language}
+                hideValues={hideValues}
+              />
 
+              {filteredHistory.length > 0 && (
                   <div className="recent-history-list">
                     <h3>{t('recentHistory')}</h3>
                     <div className="history-table-header">
@@ -1385,16 +1400,24 @@ function App() {
                       const fullIndex = history?.findIndex(h => h.id === record.id) ?? -1;
                       const prevRecord = fullIndex > 0 ? history?.[fullIndex - 1] : null;
 
-                      const change = prevRecord ? record.totalValue - prevRecord.totalValue : 0;
-                      const changePercent = prevRecord ? (change / prevRecord.totalValue * 100).toFixed(1) : '0.0';
+                      const change = prevRecord?.currency === record.currency
+                        ? record.totalValue - prevRecord.totalValue
+                        : null;
+                      const changePercent = change !== null && prevRecord && prevRecord.totalValue > 0
+                        ? (change / prevRecord.totalValue * 100).toFixed(1)
+                        : null;
 
                       return (
                         <div key={record.id} className="history-item-container">
                           <div className="history-row">
                             <span className="history-date">{record.date}</span>
-                            <span className="history-value">{displayValue(record.totalValue, '$')}</span>
-                            <span className={`history-change ${change >= 0 ? 'positive' : 'negative'}`}>
-                              {change !== 0 ? `${change > 0 ? '+' : ''}${change.toLocaleString()} (${changePercent}%)` : '-'}
+                            <span className="history-value">{displayValue(record.totalValue, `${record.currency} `)}</span>
+                            <span className={`history-change ${change === null ? 'neutral' : change >= 0 ? 'positive' : 'negative'}`}>
+                              {change === null
+                                ? prevRecord ? t('historyChangeUnavailable') : '—'
+                                : hideValues
+                                  ? '****'
+                                  : `${record.currency} ${change > 0 ? '+' : ''}${change.toLocaleString()}${changePercent === null ? '' : ` (${changePercent}%)`}`}
                             </span>
                           </div>
 
@@ -1437,12 +1460,6 @@ function App() {
                       );
                     })}
                   </div>
-                </>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '60px 20px', opacity: 0.5 }}>
-                  <TrendingUp size={64} style={{ marginBottom: '20px' }} />
-                  <p>{t('noData')}</p>
-                </div>
               )}
             </div>
           </section>
