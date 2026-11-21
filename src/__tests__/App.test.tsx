@@ -29,6 +29,17 @@ vi.mock('./services/price', () => ({
     },
 }));
 
+vi.mock('../components/TrendChart', () => ({
+    TrendChart: ({ data, mode, hideValues }: { data: { date: string }[]; mode: string; hideValues: boolean }) => (
+        <div
+            data-testid="trend-chart"
+            data-dates={data.map((record) => record.date).join(',')}
+            data-mode={mode}
+            data-hidden={hideValues}
+        />
+    ),
+}));
+
 describe('App', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -52,6 +63,38 @@ describe('App', () => {
         render(<App />);
         expect(screen.getByText('Apple')).toBeInTheDocument();
         expect(screen.getByText('AAPL')).toBeInTheDocument();
+    });
+
+    it('keeps the history range filter, notes, and asset-change mode available', () => {
+        localStorage.setItem('google_access_token', 'fake-token');
+        localStorage.setItem('user_profile', JSON.stringify({ name: 'Test User', email: '', picture: '' }));
+        localStorage.setItem('app_language', 'en');
+        const olderDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const recentDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const history = [
+            { id: 1, date: olderDate, totalValue: 1000, currency: 'TWD' },
+            { id: 2, date: recentDate, totalValue: 1100, currency: 'USD', note: 'Cash deposit' },
+        ];
+        vi.mocked(useLiveQuery).mockImplementation((query) => (
+            query.toString().includes('historyService.getHistory') ? history : []
+        ));
+
+        render(<App />);
+        fireEvent.click(screen.getByTestId('tab-trend'));
+
+        expect(screen.getByRole('button', { name: 'MAX' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByTestId('trend-chart').getAttribute('data-dates')).toBe(`${olderDate},${recentDate}`);
+        expect(screen.getByText('USD 1,100')).toBeInTheDocument();
+        expect(screen.getByText('Different currencies')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '1W' }));
+        expect(screen.getByTestId('trend-chart').getAttribute('data-dates')).toBe(recentDate);
+        expect(screen.getByText('Cash deposit')).toBeInTheDocument();
+
+        const percentMode = screen.getByRole('button', { name: 'Asset change %' });
+        fireEvent.click(percentMode);
+        expect(screen.getByTestId('trend-chart').getAttribute('data-mode')).toBe('percent');
+        expect(percentMode).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('should toggle Privacy Mode and mask values', () => {
