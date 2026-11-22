@@ -91,7 +91,7 @@ describe('TrendChart', () => {
         expect(chartMocks.timeScale.fitContent).toHaveBeenCalled();
     });
 
-    it('passes saved note markers to the chart without skipping the full-range fit', async () => {
+    it('keeps saved notes in the readout without plotting note markers', async () => {
         render(
             <TrendChart
                 data={[
@@ -102,11 +102,9 @@ describe('TrendChart', () => {
             />,
         );
 
-        await waitFor(() => {
-            expect(chartMocks.createSeriesMarkers).toHaveBeenCalledWith(chartMocks.series, [
-                { time: '2026-01-02', position: 'aboveBar', color: '#f59e0b', shape: 'circle' },
-            ]);
-        });
+        await waitFor(() => expect(chartMocks.series.setData).toHaveBeenCalled());
+        expect(chartMocks.createSeriesMarkers).not.toHaveBeenCalled();
+        expect(screen.getByText('Weekly review')).toBeInTheDocument();
         expect(chartMocks.series.setData).toHaveBeenCalledWith([
             { time: '2026-01-01', value: 1000 },
             { time: '2026-01-02', value: 1250 },
