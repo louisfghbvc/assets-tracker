@@ -5,7 +5,6 @@ import {
     ColorType,
     CrosshairMode,
     createChart,
-    createSeriesMarkers,
     type IChartApi,
     type ISeriesApi,
     type Time,
@@ -178,16 +177,6 @@ export const TrendChart: FC<TrendChartProps> = ({
         }));
         series.setData(chartData);
 
-        const noteMarkers = sortedData
-            .filter((record) => Boolean(record.note?.trim()))
-            .map((record) => ({
-                time: record.date,
-                position: 'aboveBar' as const,
-                color: '#f59e0b',
-                shape: 'circle' as const,
-            }));
-        const markerPlugin = noteMarkers.length > 0 ? createSeriesMarkers(series, noteMarkers) : null;
-
         const handleCrosshairMove = (param: { time?: Time }) => {
             const date = dateFromChartTime(param.time);
             if (date && recordsByDate.has(date)) setSelectedDate(date);
@@ -243,7 +232,6 @@ export const TrendChart: FC<TrendChartProps> = ({
             container.removeEventListener('pointerup', handleTouchEnd);
             container.removeEventListener('pointercancel', handleTouchEnd);
             chart.unsubscribeCrosshairMove(handleCrosshairMove);
-            markerPlugin?.detach();
             chart.remove();
             if (chartRef.current === chart) chartRef.current = null;
             if (seriesRef.current === series) seriesRef.current = null;
